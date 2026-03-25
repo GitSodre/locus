@@ -6,29 +6,74 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
   <div class="dashboard-container">
     <h1>Dashboard</h1>
     <p>Bem-vindo ao sistema!</p>
+
+    <h2>Convênios</h2>
+    <div id="lista-convenios"></div>
+
     <button onclick="logout()">Sair</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <script>
     const supabaseUrl = "https://tkqdqydcthdztitfzmrs.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcWRxeWRjdGhkenRpdGZ6bXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMTQxMjQsImV4cCI6MjA4OTg5MDEyNH0.ZWv6OvU3l-9qHHUu--9dyIaOxl672tm59u8I_qhLTzo";
+    const supabaseKey = "SUA_ANON_KEY";
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     async function logout() {
       await supabase.auth.signOut();
+      localStorage.clear();
       window.location.href = "index.html";
     }
 
-    // Verificar se usuário está logado
+    async function carregarConvenios() {
+      const { data, error } = await supabase
+        .from("convenios")
+        .select("*");
+
+      if (error) {
+        console.error("Erro ao ler convênios:", error.message);
+        return;
+      }
+
+      const container = document.getElementById("lista-convenios");
+      container.innerHTML = "";
+
+      const tipoUsuario = localStorage.getItem("tipoUsuario");
+
+      data.forEach(c => {
+        const div = document.createElement("div");
+        div.classList.add("convenio-card");
+
+        div.innerHTML = `
+          <h3>${c.convenio}</h3>
+          <p><strong>Empresa:</strong> ${c.empresa}</p>
+          <p><strong>Link:</strong> <a href="${c.link}" target="_blank">${c.link}</a></p>
+          <p><strong>Login:</strong> ${c.login}</p>
+          ${
+            tipoUsuario === "admin"
+              ? `<p><strong>Senha:</strong> ${c.senha}</p>`
+              : `<p><em>Senha restrita</em></p>`
+          }
+          <p><strong>Obs:</strong> ${c.observacao ?? ""}</p>
+          <hr>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         window.location.href = "index.html";
+      } else {
+        carregarConvenios();
       }
     });
   </script>
+
 </body>
 </html>
