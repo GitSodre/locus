@@ -2,22 +2,27 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Locus</title>
+  <title>Login - Locus</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="login-container">
-  <h1>Locus</h1>
+  <div class="login-container">
+    <h1>Login</h1>
 
-  <input type="text" id="login" placeholder="Usuário">
-  <input type="password" id="senha" placeholder="Senha">
+    <input type="text" id="login" placeholder="Usuário">
+    <input type="password" id="senha" placeholder="Senha">
 
-  <button id="btnEntrar">Entrar</button>
-</div>
+    <button id="btnEntrar">Entrar</button>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="app.js"></script>
+  <!-- SUPABASE CDN (SEMPRE PRIMEIRO) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- CONEXÃO -->
+  <script src="js/supabase.js"></script>
+
+  <!-- LOGIN -->
+  <script src="js/login.js"></script>
 </body>
 </html>
