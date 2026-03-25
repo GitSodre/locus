@@ -1,24 +1,53 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <title>Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
+async function logout() {
+  await supabaseClient.auth.signOut();
+  window.location.href = "index.html";
+}
 
-  <div class="dashboard-container">
-    <h1>Dashboard</h1>
-    <p>Bem-vindo ao sistema</p>
+async function carregarDashboard() {
+  const { data: sessionData } = await supabaseClient.auth.getSession();
 
-    <h2>Convênios</h2>
-    <div id="lista-convenios"></div>
+  if (!sessionData.session) {
+    window.location.href = "index.html";
+    return;
+  }
 
-    <button onclick="logout()">Sair</button>
-  </div>
+  const email = sessionData.session.user.email;
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase.js"></script>
-  <script src="js/dashboard.js"></script>
-</body>
-</html>
+  // ✅ AQUI SIM consultamos a tabela usuarios
+  const { data: usuario, error } = await supabaseClient
+    .from("usuarios")
+    .select("tipo")
+    .eq("email", email)
+    .single();
+
+  if (error) {
+    alert("Usuário sem permissão");
+    return;
+  }
+
+  const { data: convenios } = await supabaseClient
+    .from("convenios")
+    .select("*");
+
+  const container = document.getElementById("lista-convenios");
+  container.innerHTML = "";
+
+  convenios.forEach(c => {
+    container.innerHTML += `
+      <div>
+        <strong>${c.convenio}</strong><br>
+        Empresa: ${c.empresa}<br>
+        Login: ${c.login}<br>
+        ${
+          usuario.tipo === "admin"
+            ? `Senha: ${c.senha}`
+            : `<em>Senha restrita</em>`
+        }
+        <hr>
+      </div>
+    `;
+  });
+}
+
+carregarDashboard();
+``
