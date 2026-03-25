@@ -1,50 +1,24 @@
-// js/dashboard.js
-async function logout() {
-  await supabaseClient.auth.signOut();
-  localStorage.clear();
-  window.location.href = "index.html";
-}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
 
-async function carregarConvenios() {
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("*");
+  <div class="dashboard-container">
+    <h1>Dashboard</h1>
+    <p>Bem-vindo ao sistema</p>
 
-  if (error) {
-    console.error("Erro ao carregar convênios:", error.message);
-    return;
-  }
+    <h2>Convênios</h2>
+    <div id="lista-convenios"></div>
 
-  const container = document.getElementById("lista-convenios");
-  container.innerHTML = "";
+    <button onclick="logout()">Sair</button>
+  </div>
 
-  const tipoUsuario = localStorage.getItem("tipoUsuario");
-
-  data.forEach(c => {
-    const div = document.createElement("div");
-    div.classList.add("convenio-card");
-
-    div.innerHTML = `
-      <h3>${c.convenio}</h3>
-      <p><strong>Empresa:</strong> ${c.empresa}</p>
-      <p><strong>Link:</strong> ${c.link}</p>
-      <p><strong>Login:</strong> ${c.login}</p>
-      ${
-        tipoUsuario === "admin"
-          ? `<p><strong>Senha:</strong> ${c.senha}</p>`
-          : `<p><em>Senha restrita</em></p>`
-      }
-      <hr>
-    `;
-
-    container.appendChild(div);
-  });
-}
-
-supabaseClient.auth.getSession().then(({ data: { session } }) => {
-  if (!session) {
-    window.location.href = "index.html";
-  } else {
-    carregarConvenios();
-  }
-});
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
