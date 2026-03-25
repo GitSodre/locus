@@ -1,9 +1,12 @@
-const supabaseUrl = "https://tkqdqydcthdztitfzmrs.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcWRxeWRjdGhkenRpdGZ6bXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMTQxMjQsImV4cCI6MjA4OTg5MDEyNH0.ZWv6OvU3l-9qHHUu--9dyIaOxl672tm59u8I_qhLTzo";
+// Verificar se o supabase já foi declarado para evitar duplicação
+if (typeof supabase === 'undefined') {
+  const supabaseUrl = "https://tkqdqydcthdztitfzmrs.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrcWRxeWRjdGhkenRpdGZ6bXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMTQxMjQsImV4cCI6MjA4OTg5MDEyNH0.ZWv6OvU3l-9qHHUu--9dyIaOxl672tm59u8I_qhLTzo";
+  
+  var supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+}
 
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-// Aguardar o DOM carregar completamente
+// Aguardar o DOM carregar
 document.addEventListener('DOMContentLoaded', function() {
   const btnEntrar = document.getElementById('btnEntrar');
   
