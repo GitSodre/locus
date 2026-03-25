@@ -1,53 +1,73 @@
+// js/dashboard.js
+
+// Função de logout
 async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 }
 
+// Função principal do dashboard
 async function carregarDashboard() {
-  const { data: sessionData } = await supabaseClient.auth.getSession();
+  // 1️⃣ Verificar sessão
+  const { data: sessionData, error: sessionError } =
+    await supabaseClient.auth.getSession();
 
-  if (!sessionData.session) {
+  if (sessionError || !sessionData.session) {
     window.location.href = "index.html";
     return;
   }
 
   const email = sessionData.session.user.email;
 
-  // ✅ AQUI SIM consultamos a tabela usuarios
-  const { data: usuario, error } = await supabaseClient
+  // 2️⃣ Buscar perfil do usuário na tabela usuarios
+  const { data: usuario, error: usuarioError } = await supabaseClient
     .from("usuarios")
     .select("tipo")
     .eq("email", email)
     .single();
 
-  if (error) {
+  // 3️⃣ Se não tiver permissão, bloquear acesso
+  if (usuarioError || !usuario) {
     alert("Usuário sem permissão");
+    await supabaseClient.auth.signOut();
+    window.location.href = "index.html";
     return;
   }
 
-  const { data: convenios } = await supabaseClient
-    .from("convenios")
-    .select("*");
+  // 4️⃣ Buscar convênios
+  const { data: convenios, error: conveniosError } =
+    await supabaseClient
+      .from("convenios")
+      .select("*");
 
+  if (conveniosError) {
+    console.error("Erro ao carregar convênios:", conveniosError);
+    return;
+  }
+
+  // 5️⃣ Exibir convênios
   const container = document.getElementById("lista-convenios");
   container.innerHTML = "";
 
   convenios.forEach(c => {
-    container.innerHTML += `
-      <div>
-        <strong>${c.convenio}</strong><br>
-        Empresa: ${c.empresa}<br>
-        Login: ${c.login}<br>
-        ${
-          usuario.tipo === "admin"
-            ? `Senha: ${c.senha}`
-            : `<em>Senha restrita</em>`
-        }
-        <hr>
-      </div>
+    const div = document.createElement("div");
+    div.classList.add("convenio-card");
+
+    div.innerHTML = `
+      <h3>${c.convenio}</h3>
+      <p><strong>Empresa:</strong> ${c.empresa}</p>
+      <p><strong>Login:</strong> ${c.login}</p>
+      ${
+        usuario.tipo === "admin"
+          ? `<p><strong>Senha:</strong> ${c.senha}</p>`
+          : `<p><em>Senha restrita</em></p>`
+      }
+      <hr>
     `;
+
+    container.appendChild(div);
   });
 }
 
+// Executar ao carregar a página
 carregarDashboard();
-``
