@@ -1,48 +1,26 @@
-// js/login.js
-document.addEventListener("DOMContentLoaded", () => {
-  const btnEntrar = document.getElementById("btnEntrar");
-
-  if (btnEntrar) {
-    btnEntrar.addEventListener("click", logar);
-  }
-});
-
-async function logar() {
+document.getElementById("btnEntrar").addEventListener("click", async () => {
   const login = document.getElementById("login").value.trim();
   const senha = document.getElementById("senha").value.trim();
 
   if (!login || !senha) {
-    alert("Preencha usuário e senha");
+    alert("Preencha login e senha");
     return;
   }
 
   const email = login + "@sistema.com";
 
-  const { data, error } =
-    await supabaseClient.auth.signInWithPassword({
-      email: email,
-      password: senha
-    });
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password: senha
+  });
 
   if (error) {
-    alert("Erro no login: " + error.message);
+    alert("Login inválido");
     console.error(error);
     return;
   }
 
-  // Buscar tipo do usuário
-  const { data: usuario, error: erroUsuario } = await supabaseClient
-    .from("usuarios")
-    .select("tipo")
-    .eq("email", email)
-    .single();
-
-  if (erroUsuario) {
-    alert("Usuário não autorizado");
-    await supabaseClient.auth.signOut();
-    return;
-  }
-
-  localStorage.setItem("tipoUsuario", usuario.tipo);
+  // ✅ LOGIN ACABA AQUI
   window.location.href = "dashboard.html";
-}
+});
+``
