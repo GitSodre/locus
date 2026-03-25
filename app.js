@@ -3,13 +3,27 @@ const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+// Aguardar o DOM carregar completamente
+document.addEventListener('DOMContentLoaded', function() {
+  const btnEntrar = document.getElementById('btnEntrar');
+  
+  if (btnEntrar) {
+    btnEntrar.addEventListener('click', logar);
+  }
+});
+
 async function logar() {
   console.log("clicou");
 
   const login = document.getElementById("login").value;
   const senha = document.getElementById("senha").value;
 
-  const email = login + "@pulsa-rj.com.br";
+  if (!login || !senha) {
+    alert("Por favor, preencha usuário e senha!");
+    return;
+  }
+
+  const email = login + "@sistema.com";
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: email,
