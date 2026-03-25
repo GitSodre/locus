@@ -1,26 +1,27 @@
-document.getElementById("btnEntrar").addEventListener("click", async () => {
-  const login = document.getElementById("login").value.trim();
-  const senha = document.getElementById("senha").value.trim();
+document.addEventListener("DOMContentLoaded", () => {
+  const btnEntrar = document.getElementById("btnEntrar");
 
-  if (!login || !senha) {
-    alert("Preencha login e senha");
-    return;
-  }
+  btnEntrar.addEventListener("click", async () => {
+    const email = document.getElementById("login").value.trim();
+    const senha = document.getElementById("senha").value.trim();
 
-  const email = login + "@sistema.com";
+    if (!email || !senha) {
+      alert("Preencha email e senha");
+      return;
+    }
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password: senha
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password: senha
+      });
+
+    if (error) {
+      alert("Login inválido");
+      console.error(error);
+      return;
+    }
+
+    window.location.href = "dashboard.html";
   });
-
-  if (error) {
-    alert("Login inválido");
-    console.error(error);
-    return;
-  }
-
-  // ✅ LOGIN ACABA AQUI
-  window.location.href = "dashboard.html";
 });
-``
