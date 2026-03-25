@@ -1,6 +1,40 @@
-<input
-  id="login"
-  type="email"
-  placeholder="Email corporativo"
-/>
-``
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="login-container">
+    <h1>Login</h1>
+
+    <input
+      id="login"
+      type="email"
+      placeholder="Email corporativo"
+      required
+    >
+
+    <input
+      id="senha"
+      type="password"
+      placeholder="Senha"
+      required
+    >
+
+    <button id="btnEntrar">Entrar</button>
+  </div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Conexão com Supabase -->
+  <script src="js/supabase.js"></script>
+
+  <!-- Lógica do login -->
+  <script src="js/login.js"></script>
+
+</body>
+</html>
