@@ -1,11 +1,11 @@
-// Toggle mostrar/ocultar senha
+// Mostrar / ocultar senha
 document.getElementById("toggleSenha").addEventListener("click", () => {
-  const senhaInput = document.getElementById("senha");
-  senhaInput.type = senhaInput.type === "password" ? "text" : "password";
+  const senha = document.getElementById("senha");
+  senha.type = senha.type === "password" ? "text" : "password";
 });
 
 // Enter faz login
-document.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", e => {
   if (e.key === "Enter") {
     document.getElementById("btnEntrar").click();
   }
@@ -32,3 +32,4 @@ document.getElementById("btnEntrar").addEventListener("click", async () => {
 
   window.location.href = "dashboard.html";
 });
+``
