@@ -22,6 +22,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function carregarEmpresas() {
   const selectEmpresa = document.getElementById("selectEmpresa");
+
+  // Evita duplicar opções
+  if (selectEmpresa.options.length > 1) return;
+
   const empresas = [...new Set(conveniosCache.map(c => c.empresa))];
 
   empresas.forEach(empresa => {
@@ -38,10 +42,23 @@ function carregarEmpresas() {
     document.getElementById("outEmpresa").textContent = empresa || "—";
     carregarConvenios(empresa);
   });
+
+  // ✅ FILTRAR EMPRESAS AO DIGITAR
+  selectEmpresa.addEventListener("keyup", function (e) {
+    const termo = e.target.value.toLowerCase();
+
+    [...selectEmpresa.options].forEach(opt => {
+      if (opt.value === "") return;
+      opt.style.display = opt.textContent.toLowerCase().includes(termo)
+        ? "block"
+        : "none";
+    });
+  });
 }
 
 function carregarConvenios(empresa) {
   const selectConvenio = document.getElementById("selectConvenio");
+
   selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
   selectConvenio.disabled = !empresa;
 
@@ -54,6 +71,9 @@ function carregarConvenios(empresa) {
       selectConvenio.appendChild(opt);
     });
 
+  // Remove listener antigo para evitar duplicação
+  selectConvenio.onchange = null;
+
   selectConvenio.addEventListener("change", () => {
     const convenio = selectConvenio.value;
     const c = conveniosCache.find(
@@ -63,11 +83,23 @@ function carregarConvenios(empresa) {
     if (!c) return;
 
     document.getElementById("outConvenio").textContent = c.convenio;
-    document.getElementById("outLink").textContent = c.link;
-    document.getElementById("outLogin").textContent = c.login;
-    document.getElementById("outSenha").textContent = c.senha;
+    document.getElementById("outLink").textContent = c.link || "—";
+    document.getElementById("outLogin").textContent = c.login || "—";
+    document.getElementById("outSenha").textContent = c.senha || "—";
 
     document.getElementById("btnChamado").disabled = false;
+  });
+
+  // ✅ FILTRAR CONVÊNIOS AO DIGITAR
+  selectConvenio.addEventListener("keyup", function (e) {
+    const termo = e.target.value.toLowerCase();
+
+    [...selectConvenio.options].forEach(opt => {
+      if (opt.value === "") return;
+      opt.style.display = opt.textContent.toLowerCase().includes(termo)
+        ? "block"
+        : "none";
+    });
   });
 }
 
@@ -77,4 +109,5 @@ function limparDados() {
   document.getElementById("outLogin").textContent = "—";
   document.getElementById("outSenha").textContent = "—";
   document.getElementById("btnChamado").disabled = true;
+  document.getElementById("selectConvenio").disabled = true;
 }
