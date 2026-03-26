@@ -13,45 +13,41 @@
 
     <h2>Consulta de Convênios</h2>
 
-<div class="filtros-linha">
-  <div class="filtro">
-    <label>Empresa:</label>
-    <input
-      id="empresaInput"
-      list="listaEmpresas"
-      placeholder="Digite ou selecione"
-    >
-    <datalist id="listaEmpresas"></datalist>
+    <div class="filtros-linha">
+
+      <div class="filtro">
+        <label>Empresa:</label>
+        <input id="empresaInput" type="text" autocomplete="off">
+        <div id="empresaDropdown" class="dropdown"></div>
+      </div>
+
+      <div class="filtro">
+        <label>Convênio:</label>
+        <input id="convenioInput" type="text" autocomplete="off" disabled>
+        <div id="convenioDropdown" class="dropdown"></div>
+      </div>
+
+    </div>
+
+    <hr>
+
+    <div class="dados-convenio">
+      <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
+      <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
+      <p><strong>Link:</strong> <span id="outLink">—</span></p>
+      <p><strong>Login:</strong> <span id="outLogin">—</span></p>
+      <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+
+      <button id="btnChamado" disabled>
+        Solicitar alteração de senha
+      </button>
+    </div>
+
+    <button class="btn-sair" onclick="logout()">Sair</button>
   </div>
-
-  <div class="filtro">
-    <label>Convênio:</label>
-    <input
-      id="convenioInput"
-      list="listaConvenios"
-      placeholder="Digite ou selecione"
-      disabled
-    >
-    <datalist id="listaConvenios"></datalist>
-  </div>
-</div>
-
-<hr>
-
-<div id="dadosConvenio" class="dados-convenio">
-  <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
-  <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
-  <p><strong>Link:</strong> <span id="outLink">—</span></p>
-  <p><strong>Login:</strong> <span id="outLogin">—</span></p>
-  <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
-
-  <button id="btnChamado" disabled>
-    Solicitar alteração de senha
-  </button>
-</div>
 
   <!-- SUPABASE -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2></script>
 
   <!-- CONEXÃO -->
   <script src="js/supabase.js"></script>
