@@ -1,23 +1,37 @@
-async function logout() {
+/*********************************
+ * DASHBOARD.JS – VERSÃO FINAL
+ *********************************/
+
+// ✅ logout precisa ser global para funcionar no onclick
+window.logout = async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
-}
+};
 
 let conveniosCache = [];
 
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data } = await supabaseClient.auth.getSession();
-  if (!data.session) {
+  const { data: sessionData, error: sessionError } =
+    await supabaseClient.auth.getSession();
+
+  if (sessionError || !sessionData.session) {
     window.location.href = "index.html";
     return;
   }
 
-  const { data: convenios } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("convenios")
     .select("*");
 
-  conveniosCache = convenios || [];
+  if (error) {
+    console.error("Erro ao carregar convênios:", error);
+    alert("Não foi possível carregar os convênios.");
+    await window.logout();
+    return;
+  }
+
+  conveniosCache = Array.isArray(data) ? data : [];
   carregarEmpresas();
 });
 
@@ -25,11 +39,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 function carregarEmpresas() {
   const selectEmpresa = document.getElementById("selectEmpresa");
 
-  // limpa opções mantendo "Selecione"
+  // limpa mantendo "Selecione"
   selectEmpresa.length = 1;
 
   const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
-    .sort((a, b) => a.localeCompare(b)); // ✅ ordem alfabética
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   empresas.forEach(empresa => {
     const opt = document.createElement("option");
@@ -38,56 +52,36 @@ function carregarEmpresas() {
     selectEmpresa.appendChild(opt);
   });
 
-  selectEmpresa.selectedIndex = 0;
+  prepararNavegacaoPorLetra(selectEmpresa, empresaSelecionada);
 
-  let ultimoChar = "";
-  let indices = [];
-  let idx = 0;
+  selectEmpresa.onchange = () => {
+    empresaSelecionada(selectEmpresa.value);
+  };
+}
 
-  // digitação para pular por letra
-  selectEmpresa.addEventListener("keydown", e => {
-    if (e.key.length !== 1 || !/[a-zA-Z]/.test(e.key)) return;
+function empresaSelecionada(empresa) {
+  limparDados();
 
-    const letra = e.key.toUpperCase();
-    const options = [...selectEmpresa.options];
+  document.getElementById("outEmpresa").textContent = empresa || "—";
 
-    if (letra !== ultimoChar) {
-      indices = options
-        .map((opt, i) => opt.textContent.toUpperCase().startsWith(letra) ? i : -1)
-        .filter(i => i > 0);
-      idx = 0;
-      ultimoChar = letra;
-    } else {
-      idx = (idx + 1) % indices.length;
-    }
+  const selectConvenio = document.getElementById("selectConvenio");
+  selectConvenio.disabled = !empresa;
 
-    if (indices.length > 0) {
-      selectEmpresa.selectedIndex = indices[idx];
-      selectEmpresa.dispatchEvent(new Event("change"));
-    }
-  });
+  if (!empresa) return;
 
-  selectEmpresa.addEventListener("change", () => {
-    const empresa = selectEmpresa.value;
-    limparDados();
-
-    document.getElementById("outEmpresa").textContent = empresa || "—";
-    carregarConvenios(empresa);
-  });
+  carregarConvenios(empresa);
 }
 
 /* ================= CONVÊNIOS ================= */
 function carregarConvenios(empresa) {
   const selectConvenio = document.getElementById("selectConvenio");
-  selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
-  selectConvenio.disabled = !empresa;
 
-  if (!empresa) return;
+  selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
 
   const convenios = conveniosCache
     .filter(c => c.empresa === empresa)
     .map(c => c.convenio)
-    .sort((a, b) => a.localeCompare(b)); // ✅ ordem alfabética
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   convenios.forEach(conv => {
     const opt = document.createElement("option");
@@ -96,23 +90,49 @@ function carregarConvenios(empresa) {
     selectConvenio.appendChild(opt);
   });
 
-  selectConvenio.selectedIndex = 0;
+  prepararNavegacaoPorLetra(selectConvenio, convenioSelecionado(empresa));
 
+  selectConvenio.onchange = () => {
+    convenioSelecionado(empresa)(selectConvenio.value);
+  };
+}
+
+function convenioSelecionado(empresa) {
+  return function (convenio) {
+    const c = conveniosCache.find(
+      x => x.empresa === empresa && x.convenio === convenio
+    );
+
+    if (!c) return;
+
+    document.getElementById("outConvenio").textContent = c.convenio;
+    document.getElementById("outLink").textContent = c.link || "—";
+    document.getElementById("outLogin").textContent = c.login || "—";
+    document.getElementById("outSenha").textContent = c.senha || "—";
+
+    document.getElementById("btnChamado").disabled = false;
+  };
+}
+
+/* ================= NAVEGAÇÃO POR LETRA ================= */
+function prepararNavegacaoPorLetra(select, callback) {
   let ultimoChar = "";
   let indices = [];
   let idx = 0;
 
-  // digitação para pular por letra
-  selectConvenio.addEventListener("keydown", e => {
-    if (e.key.length !== 1 || !/[a-zA-Z]/.test(e.key)) return;
+  select.onkeydown = e => {
+    if (!/^[a-zA-Z]$/.test(e.key)) return;
 
     const letra = e.key.toUpperCase();
-    const options = [...selectConvenio.options];
+    const options = [...select.options];
 
     if (letra !== ultimoChar) {
       indices = options
-        .map((opt, i) => opt.textContent.toUpperCase().startsWith(letra) ? i : -1)
+        .map((opt, i) =>
+          opt.textContent.toUpperCase().startsWith(letra) ? i : -1
+        )
         .filter(i => i > 0);
+
       idx = 0;
       ultimoChar = letra;
     } else {
@@ -120,16 +140,20 @@ function carregarConvenios(empresa) {
     }
 
     if (indices.length > 0) {
-      selectConvenio.selectedIndex = indices[idx];
-      selectConvenio.dispatchEvent(new Event("change"));
+      select.selectedIndex = indices[idx];
+      callback(select.value);
     }
-  });
+  };
+}
 
-  selectConvenio.onchange = () => {
-    const convenio = selectConvenio.value;
-    const c = conveniosCache.find(
-      x => x.empresa === empresa && x.convenio === convenio
-    );
+/* ================= LIMPEZA ================= */
+function limparDados() {
+  document.getElementById("outEmpresa").textContent = "—";
+  document.getElementById("outConvenio").textContent = "—";
+  document.getElementById("outLink").textContent = "—";
+  document.getElementById("outLogin").textContent = "—";
+  document.getElementById("outSenha").textContent = "—";
 
-    if (!c) return;
-
+  document.getElementById("btnChamado").disabled = true;
+  document.getElementById("selectConvenio").disabled = true;
+}
