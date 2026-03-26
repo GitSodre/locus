@@ -1,11 +1,16 @@
+/* ========= RESET ========= */
 body {
   margin: 0;
   font-family: Arial, sans-serif;
 }
 
-/* LOGIN */
+/* =================================================
+   LOGIN
+   Visual antigo (azul escuro) + botão verde bonito
+================================================= */
+
 .login-page {
-  background: #020617;
+  background-color: #020617; /* azul escuro */
   height: 100vh;
   display: flex;
   align-items: center;
@@ -13,33 +18,72 @@ body {
 }
 
 .login-card {
-  background: #020617;
+  background-color: #020617;
   border: 1px solid #1e293b;
   padding: 30px 40px;
   border-radius: 8px;
-  box-shadow: 0 0 40px rgba(0,0,0,.6);
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
   text-align: center;
 }
 
-.login-card h1 { color: white; font-size: 48px; }
-
-.login-card input {
-  width: 280px;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 4px;
-  border: none;
+.login-card h1 {
+  color: white;
+  font-size: 48px;
+  margin-bottom: 20px;
 }
 
-.senha-wrapper { position: relative; }
+.login-card input {
+  display: block;
+  width: 280px;
+  padding: 10px;
+  margin: 10px auto;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* campo senha com olhinho */
+.senha-wrapper {
+  position: relative;
+}
+
 .olho {
   position: absolute;
   right: 10px;
   top: 12px;
   cursor: pointer;
+  user-select: none;
 }
 
-/* ===== DASHBOARD ===== */
+/* ✅ BOTÃO DE LOGIN (VERDE BONITO FINAL) */
+.login-card button {
+  width: 280px;
+  padding: 12px;
+  margin-top: 15px;
+  background-color: #16a34a; /* mesmo verde do dashboard */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.login-card button:hover {
+  background-color: #15803d;
+}
+
+.login-card button:active {
+  transform: scale(0.98);
+}
+
+/* =================================================
+   DASHBOARD
+   Visual estável e aprovado
+================================================= */
+
 .dashboard-page {
   background-color: #020617;
   min-height: 100vh;
@@ -81,17 +125,18 @@ body {
   border: none;
 }
 
-/* dados */
-.dados-convenio {
-  margin-top: 25px;
-}
-
+/* divisor */
 hr {
   margin: 25px 0;
   border: 1px solid #1e293b;
 }
 
-/* botões */
+/* dados */
+.dados-convenio {
+  margin-top: 20px;
+}
+
+/* botão verde dashboard */
 .btn-verde {
   width: 100%;
   margin-top: 20px;
@@ -109,6 +154,7 @@ hr {
   cursor: not-allowed;
 }
 
+/* botão sair */
 .btn-vermelho {
   width: 100%;
   margin-top: 15px;
