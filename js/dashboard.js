@@ -1,121 +1,52 @@
-document.addEventListener("DOMContentLoaded", () => {
-  iniciarDashboard();
-});
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Locus</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 
-let conveniosCache = [];
+<body class="dashboard-page">
 
-// LOGOUT GLOBAL
-async function logout() {
-  await supabaseClient.auth.signOut();
-  window.location.href = "index.html";
-}
+  <div class="dashboard-container">
+    <h1>Dashboard</h1>
+    <p>Consulta de convênios</p>
 
-// INICIAR DASHBOARD
-async function iniciarDashboard() {
-  const { data: sessionData } = await supabaseClient.auth.getSession();
+    <div class="filtros-linha">
+      <div class="filtro">
+        <label>Empresa</label>
+        <input id="empresaInput" type="text" autocomplete="off">
+        <div id="empresaDropdown" class="dropdown"></div>
+      </div>
 
-  if (!sessionData.session) {
-    window.location.href = "index.html";
-    return;
-  }
+      <div class="filtro">
+        <label>Convênio</label>
+        <input id="convenioInput" type="text" autocomplete="off" disabled>
+        <div id="convenioDropdown" class="dropdown"></div>
+      </div>
+    </div>
 
-  carregarConvenios();
-}
+    <hr>
 
-// CARREGAR DADOS
-async function carregarConvenios() {
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("*");
+    <div class="dados-convenio">
+      <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
+      <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
+      <p><strong>Link:</strong> <span id="outLink">—</span></p>
+      <p><strong>Login:</strong> <span id="outLogin">—</span></p>
+      <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
 
-  if (error) {
-    console.error(error);
-    return;
-  }
+      <button id="btnChamado" disabled>
+        Solicitar alteração de senha
+      </button>
+    </div>
 
-  conveniosCache = data;
-  configurarAutocompleteEmpresa();
-}
+    <button class="btn-sair" onclick="logout()">Sair</button>
+  </div>
 
-// AUTOCOMPLETE EMPRESA
-function configurarAutocompleteEmpresa() {
-  const empresaInput = document.getElementById("empresaInput");
-  const empresaDropdown = document.getElementById("empresaDropdown");
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/dashboard.js"></script>
 
-  empresaInput.addEventListener("input", () => {
-    const valor = empresaInput.value.toLowerCase();
-    empresaDropdown.innerHTML = "";
-
-    const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
-      .filter(e => e.toLowerCase().includes(valor));
-
-    empresas.forEach(e => {
-      const div = document.createElement("div");
-      div.textContent = e;
-      div.onclick = () => {
-        empresaInput.value = e;
-        empresaDropdown.style.display = "none";
-        prepararConvenios(e);
-        limparDados();
-        document.getElementById("outEmpresa").textContent = e;
-      };
-      empresaDropdown.appendChild(div);
-    });
-
-    empresaDropdown.style.display = empresas.length ? "block" : "none";
-  });
-}
-
-// AUTOCOMPLETE CONVÊNIO
-function prepararConvenios(empresa) {
-  const convenioInput = document.getElementById("convenioInput");
-  const convenioDropdown = document.getElementById("convenioDropdown");
-
-  convenioInput.disabled = false;
-  convenioInput.value = "";
-  convenioDropdown.innerHTML = "";
-
-  convenioInput.oninput = () => {
-    const valor = convenioInput.value.toLowerCase();
-    convenioDropdown.innerHTML = "";
-
-    conveniosCache
-      .filter(c => c.empresa === empresa && c.convenio.toLowerCase().includes(valor))
-      .forEach(c => {
-        const div = document.createElement("div");
-        div.textContent = c.convenio;
-        div.onclick = () => {
-          convenioInput.value = c.convenio;
-          convenioDropdown.style.display = "none";
-          preencherDados(c);
-        };
-        convenioDropdown.appendChild(div);
-      });
-
-    convenioDropdown.style.display = "block";
-  };
-}
-
-// PREENCHER DADOS
-function preencherDados(c) {
-  document.getElementById("outEmpresa").textContent = c.empresa;
-  document.getElementById("outConvenio").textContent = c.convenio;
-  document.getElementById("outLink").textContent = c.link || "—";
-  document.getElementById("outLogin").textContent = c.login || "—";
-  document.getElementById("outSenha").textContent = c.senha || "—";
-  document.getElementById("btnChamado").disabled = false;
-}
-
-// LIMPAR
-function limparDados() {
-  document.getElementById("outConvenio").textContent = "—";
-  document.getElementById("outLink").textContent = "—";
-  document.getElementById("outLogin").textContent = "—";
-  document.getElementById("outSenha").textContent = "—";
-  document.getElementById("btnChamado").disabled = true;
-}
-
-// BOTÃO CHAMADO
-document.getElementById("btnChamado").addEventListener("click", () => {
-  alert("Solicitação de alteração de senha enviada.");
-});
+</body>
+</html>
