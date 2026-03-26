@@ -11,8 +11,19 @@
     <h1>Dashboard</h1>
     <p>Bem-vindo ao sistema</p>
 
-    <h2>Convênios</h2>
-    <div id="lista-convenios"></div>
+    <h2>Consulta de Convênios</h2>
+
+    <label for="selectEmpresa">Empresa:</label>
+    <select id="selectEmpresa">
+      <option value="">Selecione a empresa</option>
+    </select>
+
+    <label for="selectConvenio">Convênio:</label>
+    <select id="selectConvenio" disabled>
+      <option value="">Selecione o convênio</option>
+    </select>
+
+    <div id="dadosConvenio" style="margin-top:20px;"></div>
 
     <button onclick="logout()">Sair</button>
   </div>
@@ -25,5 +36,6 @@
 
   <!-- DASHBOARD -->
   <script src="js/dashboard.js"></script>
+
 </body>
 </html>
