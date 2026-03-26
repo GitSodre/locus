@@ -10,24 +10,20 @@
 
   <div class="dashboard-container">
     <h1>Dashboard</h1>
-    <p>Bem-vindo ao sistema</p>
-
-    <h2>Consulta de Convênios</h2>
+    <p>Consulta de convênios</p>
 
     <div class="filtros-linha">
-
       <div class="filtro">
-        <label>Empresa:</label>
+        <label>Empresa</label>
         <input id="empresaInput" type="text" autocomplete="off">
         <div id="empresaDropdown" class="dropdown"></div>
       </div>
 
       <div class="filtro">
-        <label>Convênio:</label>
+        <label>Convênio</label>
         <input id="convenioInput" type="text" autocomplete="off" disabled>
         <div id="convenioDropdown" class="dropdown"></div>
       </div>
-
     </div>
 
     <hr>
@@ -47,13 +43,9 @@
     <button class="btn-sair" onclick="logout()">Sair</button>
   </div>
 
-  <!-- SUPABASE SDK -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- CONEXÃO -->
   <script src="js/supabase.js"></script>
-
-  <!-- DASHBOARD -->
   <script src="js/dashboard.js"></script>
 
 </body>
