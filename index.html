@@ -2,38 +2,37 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Locus</title>
+  <title>Locus - Login</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+
+<body class="login-page">
 
   <div class="login-container">
     <h1>Locus.</h1>
 
     <input
-      id="login"
       type="email"
-      placeholder="Email corporativo"
-      required
+      id="login"
+      placeholder="Email"
     >
 
     <input
-      id="senha"
       type="password"
+      id="senha"
       placeholder="Senha"
-      required
     >
 
     <button id="btnEntrar">Entrar</button>
   </div>
 
-  <!-- Supabase JS -->
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Conexão com Supabase -->
+  <!-- CONEXÃO -->
   <script src="js/supabase.js"></script>
 
-  <!-- Lógica do login -->
+  <!-- LOGIN -->
   <script src="js/login.js"></script>
 
 </body>
