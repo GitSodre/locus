@@ -8,33 +8,44 @@
 
 <body class="dashboard-page">
 
-  <div class="dashboard-card">
+  <div class="dashboard-container">
+
     <h2>Consulta de convênios</h2>
 
     <div class="filtros-linha">
       <div class="filtro">
         <label>Empresa</label>
-        <input id="empresaInput" type="text" autocomplete="off">
-        <div id="empresaDropdown" class="dropdown"></div>
+        <select id="selectEmpresa">
+          <option value="">Selecione a empresa</option>
+        </select>
       </div>
 
       <div class="filtro">
         <label>Convênio</label>
-        <input id="convenioInput" type="text" autocomplete="off" disabled>
-        <div id="convenioDropdown" class="dropdown"></div>
+        <select id="selectConvenio" disabled>
+          <option value="">Selecione o convênio</option>
+        </select>
       </div>
     </div>
 
     <hr>
 
-    <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
-    <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
-    <p><strong>Link:</strong> <span id="outLink">—</span></p>
-    <p><strong>Login:</strong> <span id="outLogin">—</span></p>
-    <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+    <div class="dados-convenio">
+      <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
+      <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
+      <p><strong>Link:</strong> <span id="outLink">—</span></p>
+      <p><strong>Login:</strong> <span id="outLogin">—</span></p>
+      <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+    </div>
 
-    <button id="btnChamado" disabled>Solicitar alteração de senha</button>
-    <button class="btn-sair" onclick="logout()">Sair</button>
+    <button id="btnChamado" class="btn-verde" disabled>
+      Solicitar alteração de senha
+    </button>
+
+    <button onclick="logout()" class="btn-vermelho">
+      Sair
+    </button>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
