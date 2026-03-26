@@ -1,22 +1,28 @@
+document.addEventListener("DOMContentLoaded", () => {
+  iniciarDashboard();
+});
+
 let conveniosCache = [];
 
-// Logout
+// LOGOUT GLOBAL
 async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 }
 
-// Inicialização
+// INICIAR DASHBOARD
 async function iniciarDashboard() {
   const { data: sessionData } = await supabaseClient.auth.getSession();
+
   if (!sessionData.session) {
     window.location.href = "index.html";
     return;
   }
+
   carregarConvenios();
 }
 
-// Carregar convênios do banco
+// CARREGAR DADOS
 async function carregarConvenios() {
   const { data, error } = await supabaseClient
     .from("convenios")
@@ -28,34 +34,37 @@ async function carregarConvenios() {
   }
 
   conveniosCache = data;
+  configurarAutocompleteEmpresa();
 }
 
 // AUTOCOMPLETE EMPRESA
-const empresaInput = document.getElementById("empresaInput");
-const empresaDropdown = document.getElementById("empresaDropdown");
+function configurarAutocompleteEmpresa() {
+  const empresaInput = document.getElementById("empresaInput");
+  const empresaDropdown = document.getElementById("empresaDropdown");
 
-empresaInput.addEventListener("input", () => {
-  const valor = empresaInput.value.toLowerCase();
-  empresaDropdown.innerHTML = "";
+  empresaInput.addEventListener("input", () => {
+    const valor = empresaInput.value.toLowerCase();
+    empresaDropdown.innerHTML = "";
 
-  const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
-    .filter(e => e.toLowerCase().includes(valor));
+    const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
+      .filter(e => e.toLowerCase().includes(valor));
 
-  empresas.forEach(e => {
-    const div = document.createElement("div");
-    div.textContent = e;
-    div.onclick = () => {
-      empresaInput.value = e;
-      empresaDropdown.style.display = "none";
-      prepararConvenios(e);
-      limparDados();
-      document.getElementById("outEmpresa").textContent = e;
-    };
-    empresaDropdown.appendChild(div);
+    empresas.forEach(e => {
+      const div = document.createElement("div");
+      div.textContent = e;
+      div.onclick = () => {
+        empresaInput.value = e;
+        empresaDropdown.style.display = "none";
+        prepararConvenios(e);
+        limparDados();
+        document.getElementById("outEmpresa").textContent = e;
+      };
+      empresaDropdown.appendChild(div);
+    });
+
+    empresaDropdown.style.display = empresas.length ? "block" : "none";
   });
-
-  empresaDropdown.style.display = empresas.length ? "block" : "none";
-});
+}
 
 // AUTOCOMPLETE CONVÊNIO
 function prepararConvenios(empresa) {
@@ -71,10 +80,7 @@ function prepararConvenios(empresa) {
     convenioDropdown.innerHTML = "";
 
     conveniosCache
-      .filter(c =>
-        c.empresa === empresa &&
-        c.convenio.toLowerCase().includes(valor)
-      )
+      .filter(c => c.empresa === empresa && c.convenio.toLowerCase().includes(valor))
       .forEach(c => {
         const div = document.createElement("div");
         div.textContent = c.convenio;
@@ -90,7 +96,7 @@ function prepararConvenios(empresa) {
   };
 }
 
-// Preencher dados
+// PREENCHER DADOS
 function preencherDados(c) {
   document.getElementById("outEmpresa").textContent = c.empresa;
   document.getElementById("outConvenio").textContent = c.convenio;
@@ -100,7 +106,7 @@ function preencherDados(c) {
   document.getElementById("btnChamado").disabled = false;
 }
 
-// Limpar dados
+// LIMPAR
 function limparDados() {
   document.getElementById("outConvenio").textContent = "—";
   document.getElementById("outLink").textContent = "—";
@@ -109,11 +115,7 @@ function limparDados() {
   document.getElementById("btnChamado").disabled = true;
 }
 
-// Botão de chamado
+// BOTÃO CHAMADO
 document.getElementById("btnChamado").addEventListener("click", () => {
   alert("Solicitação de alteração de senha enviada.");
-  // Próximo passo: INSERT na tabela chamados
 });
-
-// Iniciar
-iniciarDashboard();
