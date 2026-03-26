@@ -1,7 +1,28 @@
+/* ===== RESET ===== */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard-page {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding: 30px;
+}
+
+.dashboard-container {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  padding: 30px;
+  border-radius: 6px;
+}
+
 /* ===== FILTROS ===== */
 .filtros-linha {
   display: flex;
-  gap: 24px; /* mais espaço entre empresa e convênio */
+  gap: 30px;
   margin-top: 20px;
 }
 
@@ -13,34 +34,33 @@
 .filtro label {
   display: block;
   margin-bottom: 6px;
-  font-weight: 600;
+  font-weight: bold;
 }
 
 .filtro input {
   width: 100%;
-  padding: 8px 30px 8px 8px; /* espaço para seta */
+  padding: 8px 28px 8px 8px;
   font-size: 14px;
   box-sizing: border-box;
 }
 
-/* SETINHA ▾ */
+/* setinha ▾ */
 .filtro::after {
   content: "▾";
   position: absolute;
   right: 10px;
-  top: 34px;
-  pointer-events: none;
+  top: 36px;
   color: #555;
+  pointer-events: none;
 }
 
-/* DROPDOWN */
+/* ===== DROPDOWN ===== */
 .dropdown {
   position: absolute;
-  top: calc(100% + 4px); /* pequeno espaço entre input e menu */
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
   background: #fff;
-  color: #000;
   border: 1px solid #ccc;
   max-height: 180px;
   overflow-y: auto;
@@ -55,4 +75,36 @@
 
 .dropdown div:hover {
   background-color: #e6f0ff;
+}
+
+/* ===== DADOS ===== */
+.dados-convenio {
+  margin-top: 20px;
+}
+
+#btnChamado {
+  margin-top: 15px;
+  padding: 10px;
+  width: 100%;
+  background-color: #16a34a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#btnChamado:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+.btn-sair {
+  margin-top: 20px;
+  padding: 10px;
+  width: 100%;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
