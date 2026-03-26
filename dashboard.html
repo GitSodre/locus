@@ -42,12 +42,14 @@
       Solicitar alteração de senha
     </button>
 
-    <button onclick="logout()" class="btn-vermelho">
+    <!-- ✅ logout será exposto via window.logout no JS -->
+    <button class="btn-vermelho" onclick="logout()">
       Sair
     </button>
 
   </div>
 
+  <!-- LIBS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
   <script src="js/dashboard.js"></script>
