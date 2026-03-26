@@ -5,6 +5,7 @@ async function logout() {
 
 let conveniosCache = [];
 
+/* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
   const { data } = await supabaseClient.auth.getSession();
   if (!data.session) {
@@ -20,19 +21,50 @@ document.addEventListener("DOMContentLoaded", async () => {
   carregarEmpresas();
 });
 
+/* ================= EMPRESAS ================= */
 function carregarEmpresas() {
   const selectEmpresa = document.getElementById("selectEmpresa");
 
-  // Evita duplicar opções
-  if (selectEmpresa.options.length > 1) return;
+  // limpa opções mantendo "Selecione"
+  selectEmpresa.length = 1;
 
-  const empresas = [...new Set(conveniosCache.map(c => c.empresa))];
+  const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
+    .sort((a, b) => a.localeCompare(b)); // ✅ ordem alfabética
 
   empresas.forEach(empresa => {
     const opt = document.createElement("option");
     opt.value = empresa;
     opt.textContent = empresa;
     selectEmpresa.appendChild(opt);
+  });
+
+  selectEmpresa.selectedIndex = 0;
+
+  let ultimoChar = "";
+  let indices = [];
+  let idx = 0;
+
+  // digitação para pular por letra
+  selectEmpresa.addEventListener("keydown", e => {
+    if (e.key.length !== 1 || !/[a-zA-Z]/.test(e.key)) return;
+
+    const letra = e.key.toUpperCase();
+    const options = [...selectEmpresa.options];
+
+    if (letra !== ultimoChar) {
+      indices = options
+        .map((opt, i) => opt.textContent.toUpperCase().startsWith(letra) ? i : -1)
+        .filter(i => i > 0);
+      idx = 0;
+      ultimoChar = letra;
+    } else {
+      idx = (idx + 1) % indices.length;
+    }
+
+    if (indices.length > 0) {
+      selectEmpresa.selectedIndex = indices[idx];
+      selectEmpresa.dispatchEvent(new Event("change"));
+    }
   });
 
   selectEmpresa.addEventListener("change", () => {
@@ -42,39 +74,58 @@ function carregarEmpresas() {
     document.getElementById("outEmpresa").textContent = empresa || "—";
     carregarConvenios(empresa);
   });
-
-  // ✅ FILTRAR EMPRESAS AO DIGITAR
-  selectEmpresa.addEventListener("keyup", function (e) {
-    const termo = e.target.value.toLowerCase();
-
-    [...selectEmpresa.options].forEach(opt => {
-      if (opt.value === "") return;
-      opt.style.display = opt.textContent.toLowerCase().includes(termo)
-        ? "block"
-        : "none";
-    });
-  });
 }
 
+/* ================= CONVÊNIOS ================= */
 function carregarConvenios(empresa) {
   const selectConvenio = document.getElementById("selectConvenio");
-
   selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
   selectConvenio.disabled = !empresa;
 
-  conveniosCache
+  if (!empresa) return;
+
+  const convenios = conveniosCache
     .filter(c => c.empresa === empresa)
-    .forEach(c => {
-      const opt = document.createElement("option");
-      opt.value = c.convenio;
-      opt.textContent = c.convenio;
-      selectConvenio.appendChild(opt);
-    });
+    .map(c => c.convenio)
+    .sort((a, b) => a.localeCompare(b)); // ✅ ordem alfabética
 
-  // Remove listener antigo para evitar duplicação
-  selectConvenio.onchange = null;
+  convenios.forEach(conv => {
+    const opt = document.createElement("option");
+    opt.value = conv;
+    opt.textContent = conv;
+    selectConvenio.appendChild(opt);
+  });
 
-  selectConvenio.addEventListener("change", () => {
+  selectConvenio.selectedIndex = 0;
+
+  let ultimoChar = "";
+  let indices = [];
+  let idx = 0;
+
+  // digitação para pular por letra
+  selectConvenio.addEventListener("keydown", e => {
+    if (e.key.length !== 1 || !/[a-zA-Z]/.test(e.key)) return;
+
+    const letra = e.key.toUpperCase();
+    const options = [...selectConvenio.options];
+
+    if (letra !== ultimoChar) {
+      indices = options
+        .map((opt, i) => opt.textContent.toUpperCase().startsWith(letra) ? i : -1)
+        .filter(i => i > 0);
+      idx = 0;
+      ultimoChar = letra;
+    } else {
+      idx = (idx + 1) % indices.length;
+    }
+
+    if (indices.length > 0) {
+      selectConvenio.selectedIndex = indices[idx];
+      selectConvenio.dispatchEvent(new Event("change"));
+    }
+  });
+
+  selectConvenio.onchange = () => {
     const convenio = selectConvenio.value;
     const c = conveniosCache.find(
       x => x.empresa === empresa && x.convenio === convenio
@@ -82,32 +133,3 @@ function carregarConvenios(empresa) {
 
     if (!c) return;
 
-    document.getElementById("outConvenio").textContent = c.convenio;
-    document.getElementById("outLink").textContent = c.link || "—";
-    document.getElementById("outLogin").textContent = c.login || "—";
-    document.getElementById("outSenha").textContent = c.senha || "—";
-
-    document.getElementById("btnChamado").disabled = false;
-  });
-
-  // ✅ FILTRAR CONVÊNIOS AO DIGITAR
-  selectConvenio.addEventListener("keyup", function (e) {
-    const termo = e.target.value.toLowerCase();
-
-    [...selectConvenio.options].forEach(opt => {
-      if (opt.value === "") return;
-      opt.style.display = opt.textContent.toLowerCase().includes(termo)
-        ? "block"
-        : "none";
-    });
-  });
-}
-
-function limparDados() {
-  document.getElementById("outConvenio").textContent = "—";
-  document.getElementById("outLink").textContent = "—";
-  document.getElementById("outLogin").textContent = "—";
-  document.getElementById("outSenha").textContent = "—";
-  document.getElementById("btnChamado").disabled = true;
-  document.getElementById("selectConvenio").disabled = true;
-}
