@@ -168,15 +168,18 @@ hr {
 }
 /* Hover padrão (igual botão de login) */
 .btn-verde {
+  background-color: #16a34a;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.btn-verde:hover {
-  background-color: #15803d; /* verde mais escuro */
+.btn-verde:hover:not(:disabled) {
+  background-color: #15803d;
 }
 
-.btn-verde:active {
-  transform: scale(0.98);
+.btn-verde:disabled {
+  background-color: #4b5563;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-vermelho {
