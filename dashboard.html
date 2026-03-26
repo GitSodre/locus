@@ -13,20 +13,42 @@
 
     <h2>Consulta de Convênios</h2>
 
-    <label for="selectEmpresa">Empresa:</label>
-    <select id="selectEmpresa">
-      <option value="">Selecione a empresa</option>
-    </select>
-
-    <label for="selectConvenio">Convênio:</label>
-    <select id="selectConvenio" disabled>
-      <option value="">Selecione o convênio</option>
-    </select>
-
-    <div id="dadosConvenio" style="margin-top:20px;"></div>
-
-    <button onclick="logout()">Sair</button>
+<div class="filtros-linha">
+  <div class="filtro">
+    <label>Empresa:</label>
+    <input
+      id="empresaInput"
+      list="listaEmpresas"
+      placeholder="Digite ou selecione"
+    >
+    <datalist id="listaEmpresas"></datalist>
   </div>
+
+  <div class="filtro">
+    <label>Convênio:</label>
+    <input
+      id="convenioInput"
+      list="listaConvenios"
+      placeholder="Digite ou selecione"
+      disabled
+    >
+    <datalist id="listaConvenios"></datalist>
+  </div>
+</div>
+
+<hr>
+
+<div id="dadosConvenio" class="dados-convenio">
+  <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
+  <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
+  <p><strong>Link:</strong> <span id="outLink">—</span></p>
+  <p><strong>Login:</strong> <span id="outLogin">—</span></p>
+  <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+
+  <button id="btnChamado" disabled>
+    Solicitar alteração de senha
+  </button>
+</div>
 
   <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
