@@ -1,9 +1,18 @@
+// ===============================
+// DASHBOARD.JS - CONSULTA DE CONVÊNIOS
+// ===============================
+
+// Cache local dos convênios
+let conveniosCache = [];
+
+// Logout
 async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 }
 
-async function carregarDashboard() {
+// Inicialização do dashboard
+async function iniciarDashboard() {
   const { data: sessionData } = await supabaseClient.auth.getSession();
 
   if (!sessionData.session) {
@@ -11,95 +20,92 @@ async function carregarDashboard() {
     return;
   }
 
-  await carregarEmpresas();
+  carregarEmpresas();
 }
 
+// Carregar empresas (autocomplete)
 async function carregarEmpresas() {
   const { data, error } = await supabaseClient
     .from("convenios")
-    .select("empresa")
+    .select("*")
     .order("empresa");
 
   if (error) {
-    console.error(error);
+    console.error("Erro ao carregar convênios:", error);
     return;
   }
 
-  const empresasUnicas = [...new Set(data.map(item => item.empresa))];
+  conveniosCache = data;
 
-  const selectEmpresa = document.getElementById("selectEmpresa");
-  selectEmpresa.innerHTML = `<option value="">Selecione a empresa</option>`;
+  const empresasUnicas = [...new Set(data.map(c => c.empresa))];
+  const listaEmpresas = document.getElementById("listaEmpresas");
+  listaEmpresas.innerHTML = "";
 
-  empresasUnicas.forEach(emp => {
+  empresasUnicas.forEach(empresa => {
     const option = document.createElement("option");
-    option.value = emp;
-    option.textContent = emp;
-    selectEmpresa.appendChild(option);
+    option.value = empresa;
+    listaEmpresas.appendChild(option);
   });
-
-  selectEmpresa.addEventListener("change", carregarConvenios);
 }
 
-async function carregarConvenios() {
-  const empresa = document.getElementById("selectEmpresa").value;
-  const selectConvenio = document.getElementById("selectConvenio");
-  const dadosDiv = document.getElementById("dadosConvenio");
+// Quando a empresa muda (digitando ou selecionando)
+document.getElementById("empresaInput").addEventListener("input", () => {
+  const empresa = document.getElementById("empresaInput").value;
+  const listaConvenios = document.getElementById("listaConvenios");
+  const convenioInput = document.getElementById("convenioInput");
 
-  dadosDiv.innerHTML = "";
-  selectConvenio.innerHTML = `<option value="">Selecione o convênio</option>`;
-  selectConvenio.disabled = true;
+  // Reset visual
+  document.getElementById("outEmpresa").textContent = empresa || "—";
+  document.getElementById("outConvenio").textContent = "—";
+  document.getElementById("outLink").textContent = "—";
+  document.getElementById("outLogin").textContent = "—";
+  document.getElementById("outSenha").textContent = "—";
+  document.getElementById("btnChamado").disabled = true;
+
+  listaConvenios.innerHTML = "";
+  convenioInput.value = "";
+  convenioInput.disabled = true;
 
   if (!empresa) return;
 
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("id, convenio")
-    .eq("empresa", empresa);
+  const filtrados = conveniosCache.filter(c => c.empresa === empresa);
 
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  data.forEach(c => {
+  filtrados.forEach(c => {
     const option = document.createElement("option");
-    option.value = c.id;
-    option.textContent = c.convenio;
-    selectConvenio.appendChild(option);
+    option.value = c.convenio;
+    listaConvenios.appendChild(option);
   });
 
-  selectConvenio.disabled = false;
-  selectConvenio.addEventListener("change", carregarDadosConvenio);
-}
-
-async function carregarDadosConvenio() {
-  const id = document.getElementById("selectConvenio").value;
-  const dadosDiv = document.getElementById("dadosConvenio");
-
-  dadosDiv.innerHTML = "";
-
-  if (!id) return;
-
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    console.error(error);
-    return;
+  if (filtrados.length > 0) {
+    convenioInput.disabled = false;
   }
+});
 
-  dadosDiv.innerHTML = `
-    <h3>${data.convenio}</h3>
-    <p><strong>Empresa:</strong> ${data.empresa}</p>
-    <p><strong>Link:</strong> <a href="${data.link}" target="_blank">${data.link}</a></p>
-    <p><strong>Login:</strong> ${data.login}</p>
-    <p><strong>Senha:</strong> ${data.senha}</p>
-    <p><strong>Observação:</strong> ${data.observacao ?? ""}</p>
-  `;
-}
+// Quando o convênio muda
+document.getElementById("convenioInput").addEventListener("input", () => {
+  const empresa = document.getElementById("empresaInput").value;
+  const convenio = document.getElementById("convenioInput").value;
 
-carregarDashboard();
-``
+  const registro = conveniosCache.find(
+    c => c.empresa === empresa && c.convenio === convenio
+  );
+
+  if (!registro) return;
+
+  document.getElementById("outEmpresa").textContent = registro.empresa;
+  document.getElementById("outConvenio").textContent = registro.convenio;
+  document.getElementById("outLink").textContent = registro.link || "—";
+  document.getElementById("outLogin").textContent = registro.login || "—";
+  document.getElementById("outSenha").textContent = registro.senha || "—";
+
+  document.getElementById("btnChamado").disabled = false;
+});
+
+// Botão de solicitar alteração de senha
+document.getElementById("btnChamado").addEventListener("click", () => {
+  alert("Solicitação de alteração de senha registrada.\n\n(Próximo passo: abrir chamado no sistema)");
+  // Aqui depois você liga com INSERT na tabela 'chamados'
+});
+
+// Iniciar dashboard ao carregar
+iniciarDashboard();
