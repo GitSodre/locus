@@ -1,12 +1,12 @@
 let conveniosCache = [];
 
-// Logout
+// LOGOUT
 async function logout() {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 }
 
-// Inicialização
+// INICIAR DASHBOARD
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: session } = await supabaseClient.auth.getSession();
   if (!session.session) {
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   carregarConvenios();
 });
 
-// Carregar dados
+// CARREGAR CONVENIOS
 async function carregarConvenios() {
   const { data, error } = await supabaseClient
     .from("convenios")
@@ -31,12 +31,19 @@ async function carregarConvenios() {
   conveniosCache = data;
 }
 
-// EMPRESA
+/* ================= EMPRESA ================= */
 const empresaInput = document.getElementById("empresaInput");
 const empresaDropdown = document.getElementById("empresaDropdown");
 
 empresaInput.addEventListener("focus", () => renderEmpresas(""));
-empresaInput.addEventListener("input", () => renderEmpresas(empresaInput.value));
+empresaInput.addEventListener("input", () => {
+  const valor = empresaInput.value.trim();
+  renderEmpresas(valor);
+
+  if (valor === "") {
+    limparTudo();
+  }
+});
 
 function renderEmpresas(filtro) {
   empresaDropdown.innerHTML = "";
@@ -59,12 +66,12 @@ function selecionarEmpresa(empresa) {
   empresaDropdown.style.display = "none";
 
   document.getElementById("outEmpresa").textContent = empresa;
-  limparDados();
 
   prepararConvenios(empresa);
+  limparDadosAbaixoEmpresa();
 }
 
-// CONVÊNIO
+/* ================= CONVENIO ================= */
 const convenioInput = document.getElementById("convenioInput");
 const convenioDropdown = document.getElementById("convenioDropdown");
 
@@ -73,7 +80,14 @@ function prepararConvenios(empresa) {
   convenioInput.value = "";
 
   convenioInput.addEventListener("focus", () => renderConvenios(empresa, ""));
-  convenioInput.addEventListener("input", () => renderConvenios(empresa, convenioInput.value));
+  convenioInput.addEventListener("input", () => {
+    const valor = convenioInput.value.trim();
+    renderConvenios(empresa, valor);
+
+    if (valor === "") {
+      limparDadosAbaixoConvenio();
+    }
+  });
 }
 
 function renderConvenios(empresa, filtro) {
@@ -106,16 +120,21 @@ function selecionarConvenio(c) {
   document.getElementById("btnChamado").disabled = false;
 }
 
-// Fechar dropdown ao clicar fora
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".filtro")) {
-    empresaDropdown.style.display = "none";
-    convenioDropdown.style.display = "none";
-  }
-});
+/* ================= LIMPEZA ================= */
+function limparTudo() {
+  empresaInput.value = "";
+  convenioInput.value = "";
+  convenioInput.disabled = true;
 
-// Limpar dados
-function limparDados() {
+  limparDadosAbaixoEmpresa();
+}
+
+function limparDadosAbaixoEmpresa() {
+  document.getElementById("outEmpresa").textContent = "—";
+  limparDadosAbaixoConvenio();
+}
+
+function limparDadosAbaixoConvenio() {
   document.getElementById("outConvenio").textContent = "—";
   document.getElementById("outLink").textContent = "—";
   document.getElementById("outLogin").textContent = "—";
@@ -123,7 +142,15 @@ function limparDados() {
   document.getElementById("btnChamado").disabled = true;
 }
 
-// Botão chamado
+/* FECHAR MENU AO CLICAR FORA */
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".filtro")) {
+    empresaDropdown.style.display = "none";
+    convenioDropdown.style.display = "none";
+  }
+});
+
+/* BOTÃO CHAMADO */
 document.getElementById("btnChamado").addEventListener("click", () => {
   alert("Solicitação de alteração de senha enviada.");
 });
