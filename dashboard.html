@@ -33,19 +33,27 @@
     <div class="dados-convenio">
       <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
       <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
-      <p><strong>Link:</strong> <span id="outLink">—</span></p>
+
+      <p>
+        <strong>Link:</strong>
+        <!-- Sem href por padrão; JS vai ativar quando houver URL -->
+        <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
+      </p>
+
       <p><strong>Login:</strong> <span id="outLogin">—</span></p>
       <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+      <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
     </div>
 
-    <button id="btnChamado" class="btn-verde" disabled>
-      Solicitar alteração de senha
-    </button>
+    <div class="caixa_botoes">
+      <button id="btnChamado" class="btn-verde" disabled>
+        Solicitar alteração de senha
+      </button>
 
-    <!-- ✅ logout será exposto via window.logout no JS -->
-    <button class="btn-vermelho" onclick="logout()">
-      Sair
-    </button>
+      <button class="btn-vermelho" onclick="logout()">
+        Sair
+      </button>
+    </div>
 
   </div>
 
