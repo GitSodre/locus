@@ -138,22 +138,30 @@ hr {
   margin-top: 20px;
 }
 
-/* LINK CLICÁVEL */
+/* LINK CLICÁVEL (normal/hover) */
 #outLink {
   color: #60a5fa;
   font-weight: 500;
   text-decoration: none;
 }
-
 #outLink:hover {
   text-decoration: underline;
+}
+
+/* Estado desativado (sem href) – link realmente não clica */
+#outLink.link-desabilitado,
+#outLink[aria-disabled="true"] {
+  color: #9ca3af;           /* cinza */
+  text-decoration: none;
+  cursor: default;
+  pointer-events: none;     /* bloqueia clique */
 }
 
 /* =================================================
    BOTÕES DO DASHBOARD
 ================================================= */
 
-/* CONTAINER DOS BOTÕES */
+/* CONTAINER DOS BOTÕES (lado a lado) */
 .caixa_botoes {
   display: flex;
   gap: 15px;
@@ -172,15 +180,12 @@ hr {
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
-
 .btn-verde:hover:not(:disabled) {
   background-color: #15803d;
 }
-
 .btn-verde:active {
   transform: scale(0.98);
 }
-
 .btn-verde:disabled {
   background-color: #4b5563;
   cursor: not-allowed;
@@ -199,29 +204,41 @@ hr {
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
-
 .btn-vermelho:hover {
   background-color: #b91c1c;
 }
-
 .btn-vermelho:active {
   transform: scale(0.98);
 }
-/* Link clicável normal */
-#outLink {
-  color: #60a5fa;
-  font-weight: 500;
-  text-decoration: none;
-}
-#outLink:hover {
-  text-decoration: underline;
-}
 
-/* Estado desativado (sem href) */
-#outLink.link-desabilitado,
-#outLink[aria-disabled="true"] {
-  color: #9ca3af;            /* cinza */
-  text-decoration: none;
-  cursor: default;
-  pointer-events: none;       /* 🔒 impede qualquer clique */
+/* =================================================
+   BOTÕES DE COPIAR (ao lado de Link/Login/Senha)
+================================================= */
+
+/* botão pequeno */
+.btn-copy {
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 13px;
+  line-height: 1;
+  background: #0f172a;
+  color: #e5e7eb;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color .2s ease, transform .05s ease;
+  vertical-align: middle;
+}
+.btn-copy:hover:not(:disabled) { background: #1e293b; }
+.btn-copy:active:not(:disabled) { transform: scale(0.98); }
+.btn-copy:disabled { opacity: .45; cursor: not-allowed; }
+/* garante esconder quando hidden */
+.btn-copy[hidden] { display: none !important; }
+
+/* ícone dentro do botão de copiar */
+.btn-copy .icon-copy {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: -2px;
 }
