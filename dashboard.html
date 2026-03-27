@@ -36,12 +36,24 @@
 
       <p>
         <strong>Link:</strong>
-        <!-- Sem href por padrão; JS vai ativar quando houver URL -->
+        <!-- Sem href por padrão; JS ativa quando houver URL -->
         <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
+        <!-- aparece só quando houver link -->
+        <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>📋</button>
       </p>
 
-      <p><strong>Login:</strong> <span id="outLogin">—</span></p>
-      <p><strong>Senha:</strong> <span id="outSenha">—</span></p>
+      <p>
+        <strong>Login:</strong> <span id="outLogin">—</span>
+        <!-- aparece só quando houver login -->
+        <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>📋</button>
+      </p>
+
+      <p>
+        <strong>Senha:</strong> <span id="outSenha">—</span>
+        <!-- aparece só quando houver senha -->
+        <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>📋</button>
+      </p>
+
       <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
     </div>
 
@@ -49,10 +61,7 @@
       <button id="btnChamado" class="btn-verde" disabled>
         Solicitar alteração de senha
       </button>
-
-      <button class="btn-vermelho" onclick="logout()">
-        Sair
-      </button>
+      <button class="btn-vermelho" onclick="logout()">Sair</button>
     </div>
 
   </div>
