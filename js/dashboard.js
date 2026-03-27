@@ -1,8 +1,8 @@
 /*********************************
- * DASHBOARD.JS – FINAL E ESTÁVEL
+ * DASHBOARD.JS – FINAL E ESTÁVEL + COPIAR + SHOW/HIDE
  *********************************/
 
-// Expor logout no escopo global (HTML consegue chamar)
+// logout global
 window.logout = async function () {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
@@ -20,8 +20,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Garante que o estado visual inicial esteja desativado
-  limparDados();
+  limparDados();            // estado inicial
+  prepararBotoesDeCopia();  // listeners (uma única vez)
 
   const { data, error } = await supabaseClient
     .from("convenios")
@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 /* ================= EMPRESAS ================= */
 function carregarEmpresas() {
   const selectEmpresa = document.getElementById("selectEmpresa");
-  // limpar mantendo "Selecione"
   selectEmpresa.length = 1;
 
   const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
@@ -68,7 +67,10 @@ function carregarConvenios(empresa) {
   selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
   selectConvenio.disabled = !empresa;
 
-  if (!empresa) return;
+  if (!empresa) {
+    setCopyState(); // garante botões ocultos
+    return;
+  }
 
   const convenios = conveniosCache
     .filter(c => c.empresa === empresa)
@@ -93,9 +95,10 @@ function carregarConvenios(empresa) {
       return;
     }
 
+    // Preenche campos
     document.getElementById("outConvenio").textContent = c.convenio;
 
-    // 🔗 LINK CLICÁVEL (ativa/desativa corretamente)
+    // LINK
     const linkEl = document.getElementById("outLink");
     if (c.link && c.link.trim() !== "") {
       const url = c.link.startsWith("http") ? c.link : "https://" + c.link;
@@ -106,7 +109,6 @@ function carregarConvenios(empresa) {
       linkEl.removeAttribute("aria-disabled");
       linkEl.classList.remove("link-desabilitado");
     } else {
-      // Desativa totalmente o clique
       linkEl.textContent = "—";
       linkEl.removeAttribute("href");
       linkEl.removeAttribute("target");
@@ -114,12 +116,90 @@ function carregarConvenios(empresa) {
       linkEl.classList.add("link-desabilitado");
     }
 
-    document.getElementById("outLogin").textContent = c.login || "—";
-    document.getElementById("outSenha").textContent = c.senha || "—";
-    document.getElementById("outObservacao").textContent = c.observacao || "—";
+    document.getElementById("outLogin").textContent = safeText(c.login);
+    document.getElementById("outSenha").textContent = safeText(c.senha);
+    document.getElementById("outObservacao").textContent = safeText(c.observacao);
 
+    // Ativa ação
     document.getElementById("btnChamado").disabled = false;
+
+    // 🔁 Atualiza visibilidade dos botões de copiar
+    setCopyState();
   };
+}
+
+/* ================= COPIAR ================= */
+function prepararBotoesDeCopia() {
+  const btnCopyLink  = document.getElementById("copyLink");
+  const btnCopyLogin = document.getElementById("copyLogin");
+  const btnCopySenha = document.getElementById("copySenha");
+
+  if (btnCopyLink)  btnCopyLink.addEventListener("click", async () => { await copyToClipboard(getValueForCopyLink()); });
+  if (btnCopyLogin) btnCopyLogin.addEventListener("click", async () => { await copyToClipboard(getTextFrom("outLogin")); });
+  if (btnCopySenha) btnCopySenha.addEventListener("click", async () => { await copyToClipboard(getTextFrom("outSenha")); });
+}
+
+// Mostra/oculta + habilita/desabilita de forma robusta
+function setCopyState() {
+  toggleCopyVisibility("copyLink",  !!getValueForCopyLink());
+  toggleCopyVisibility("copyLogin", !!getTextFrom("outLogin"));
+  toggleCopyVisibility("copySenha", !!getTextFrom("outSenha"));
+}
+
+function toggleCopyVisibility(btnId, show) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+
+  if (show) {
+    btn.disabled = false;
+    btn.removeAttribute("hidden");        // remove atributo
+    btn.style.display = "inline-block";   // garante exibição
+  } else {
+    btn.disabled = true;
+    btn.setAttribute("hidden", "");       // atributo HTML hidden
+    btn.style.display = "none";           // reforço
+  }
+}
+
+function getValueForCopyLink() {
+  const a = document.getElementById("outLink");
+  const href = a.getAttribute("href");
+  const disabled = a.getAttribute("aria-disabled") === "true";
+  return (!disabled && href) ? href : "";
+}
+
+function getTextFrom(id) {
+  const el = document.getElementById(id);
+  const t = (el?.textContent || "").trim();
+  // só considera válido se não for vazio e não for o marcador "—"
+  return (t && t !== "—") ? t : "";
+}
+
+function safeText(v) {
+  const t = (v ?? "").toString().trim();
+  return t ? t : "—";
+}
+
+async function copyToClipboard(text) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // Fallback para ambientes sem permissão/HTTPS
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (err) {
+      console.error("Falha ao copiar:", err);
+    }
+  }
 }
 
 /* ================= LIMPEZA ================= */
@@ -140,5 +220,6 @@ function limparDados() {
 
   document.getElementById("btnChamado").disabled = true;
   document.getElementById("selectConvenio").disabled = true;
+
+  setCopyState(); // esconde botões de copiar
 }
-``
