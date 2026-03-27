@@ -1,9 +1,9 @@
 /*********************************
- * DASHBOARD.JS – VERSÃO FINAL
+ * DASHBOARD.JS – FINAL E ESTÁVEL
  *********************************/
 
-// ✅ logout precisa ser global para funcionar no onclick
-window.logout = async function logout() {
+// Expor logout no escopo global (HTML consegue chamar)
+window.logout = async function () {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 };
@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Garante que o estado visual inicial esteja desativado
+  limparDados();
+
   const { data, error } = await supabaseClient
     .from("convenios")
     .select("*");
@@ -31,52 +34,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  conveniosCache = Array.isArray(data) ? data : [];
+  conveniosCache = data || [];
   carregarEmpresas();
 });
 
 /* ================= EMPRESAS ================= */
 function carregarEmpresas() {
   const selectEmpresa = document.getElementById("selectEmpresa");
-
-  // limpa mantendo "Selecione"
+  // limpar mantendo "Selecione"
   selectEmpresa.length = 1;
 
   const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
     .sort((a, b) => a.localeCompare(b, "pt-BR"));
 
-  empresas.forEach(empresa => {
+  empresas.forEach(emp => {
     const opt = document.createElement("option");
-    opt.value = empresa;
-    opt.textContent = empresa;
+    opt.value = emp;
+    opt.textContent = emp;
     selectEmpresa.appendChild(opt);
   });
 
-  prepararNavegacaoPorLetra(selectEmpresa, empresaSelecionada);
-
   selectEmpresa.onchange = () => {
-    empresaSelecionada(selectEmpresa.value);
+    limparDados();
+    const empresa = selectEmpresa.value;
+    document.getElementById("outEmpresa").textContent = empresa || "—";
+    carregarConvenios(empresa);
   };
-}
-
-function empresaSelecionada(empresa) {
-  limparDados();
-
-  document.getElementById("outEmpresa").textContent = empresa || "—";
-
-  const selectConvenio = document.getElementById("selectConvenio");
-  selectConvenio.disabled = !empresa;
-
-  if (!empresa) return;
-
-  carregarConvenios(empresa);
 }
 
 /* ================= CONVÊNIOS ================= */
 function carregarConvenios(empresa) {
   const selectConvenio = document.getElementById("selectConvenio");
-
   selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
+  selectConvenio.disabled = !empresa;
+
+  if (!empresa) return;
 
   const convenios = conveniosCache
     .filter(c => c.empresa === empresa)
@@ -90,59 +82,43 @@ function carregarConvenios(empresa) {
     selectConvenio.appendChild(opt);
   });
 
-  prepararNavegacaoPorLetra(selectConvenio, convenioSelecionado(empresa));
-
   selectConvenio.onchange = () => {
-    convenioSelecionado(empresa)(selectConvenio.value);
-  };
-}
-
-function convenioSelecionado(empresa) {
-  return function (convenio) {
+    const selecionado = selectConvenio.value;
     const c = conveniosCache.find(
-      x => x.empresa === empresa && x.convenio === convenio
+      x => x.empresa === empresa && x.convenio === selecionado
     );
 
-    if (!c) return;
+    if (!c) {
+      limparDados();
+      return;
+    }
 
     document.getElementById("outConvenio").textContent = c.convenio;
-    document.getElementById("outLink").textContent = c.link || "—";
+
+    // 🔗 LINK CLICÁVEL (ativa/desativa corretamente)
+    const linkEl = document.getElementById("outLink");
+    if (c.link && c.link.trim() !== "") {
+      const url = c.link.startsWith("http") ? c.link : "https://" + c.link;
+      linkEl.href = url;
+      linkEl.target = "_blank";
+      linkEl.rel = "noopener noreferrer";
+      linkEl.textContent = url;
+      linkEl.removeAttribute("aria-disabled");
+      linkEl.classList.remove("link-desabilitado");
+    } else {
+      // Desativa totalmente o clique
+      linkEl.textContent = "—";
+      linkEl.removeAttribute("href");
+      linkEl.removeAttribute("target");
+      linkEl.setAttribute("aria-disabled", "true");
+      linkEl.classList.add("link-desabilitado");
+    }
+
     document.getElementById("outLogin").textContent = c.login || "—";
     document.getElementById("outSenha").textContent = c.senha || "—";
+    document.getElementById("outObservacao").textContent = c.observacao || "—";
 
     document.getElementById("btnChamado").disabled = false;
-  };
-}
-
-/* ================= NAVEGAÇÃO POR LETRA ================= */
-function prepararNavegacaoPorLetra(select, callback) {
-  let ultimoChar = "";
-  let indices = [];
-  let idx = 0;
-
-  select.onkeydown = e => {
-    if (!/^[a-zA-Z]$/.test(e.key)) return;
-
-    const letra = e.key.toUpperCase();
-    const options = [...select.options];
-
-    if (letra !== ultimoChar) {
-      indices = options
-        .map((opt, i) =>
-          opt.textContent.toUpperCase().startsWith(letra) ? i : -1
-        )
-        .filter(i => i > 0);
-
-      idx = 0;
-      ultimoChar = letra;
-    } else {
-      idx = (idx + 1) % indices.length;
-    }
-
-    if (indices.length > 0) {
-      select.selectedIndex = indices[idx];
-      callback(select.value);
-    }
   };
 }
 
@@ -150,10 +126,19 @@ function prepararNavegacaoPorLetra(select, callback) {
 function limparDados() {
   document.getElementById("outEmpresa").textContent = "—";
   document.getElementById("outConvenio").textContent = "—";
-  document.getElementById("outLink").textContent = "—";
+
+  const linkEl = document.getElementById("outLink");
+  linkEl.textContent = "—";
+  linkEl.removeAttribute("href");
+  linkEl.removeAttribute("target");
+  linkEl.setAttribute("aria-disabled", "true");
+  linkEl.classList.add("link-desabilitado");
+
   document.getElementById("outLogin").textContent = "—";
   document.getElementById("outSenha").textContent = "—";
+  document.getElementById("outObservacao").textContent = "—";
 
   document.getElementById("btnChamado").disabled = true;
   document.getElementById("selectConvenio").disabled = true;
 }
+``
