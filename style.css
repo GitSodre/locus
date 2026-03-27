@@ -6,20 +6,19 @@ body {
 
 /* =================================================
    LOGIN
-   Visual antigo (azul escuro) + botão verde bonito
+   Visual antigo (azul escuro) + botão verde
 ================================================= */
 
 .login-page {
-  background-color: #020617; /* azul escuro */
-  height: 100vh;
+  background-color: #0c143a;
+  height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .login-card {
-  background-color: #020617;
-  border: 1px solid #1e293b;
+  background-color: #0206173b;
   padding: 30px 40px;
   border-radius: 8px;
   box-shadow: 0 0 40px rgba(0,0,0,0.6);
@@ -29,7 +28,9 @@ body {
 .login-card h1 {
   color: white;
   font-size: 48px;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
   margin-bottom: 20px;
+  margin-top: 5px;
 }
 
 .login-card input {
@@ -56,12 +57,12 @@ body {
   user-select: none;
 }
 
-/* ✅ BOTÃO DE LOGIN (VERDE BONITO FINAL) */
+/* BOTÃO DE LOGIN */
 .login-card button {
   width: 280px;
   padding: 12px;
   margin-top: 15px;
-  background-color: #16a34a; /* mesmo verde do dashboard */
+  background-color: #16a34a;
   color: white;
   border: none;
   border-radius: 4px;
@@ -81,26 +82,26 @@ body {
 
 /* =================================================
    DASHBOARD
-   Visual estável e aprovado
 ================================================= */
 
 .dashboard-page {
-  background-color: #020617;
+  background-color: #0c143a;
   min-height: 100vh;
-  padding: 40px;
+  padding: 80px;
   color: #e5e7eb;
 }
 
 .dashboard-container {
   max-width: 900px;
   margin: auto;
-  background-color: #020617;
+  background-color: #0206173b;
   padding: 30px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
   border-radius: 8px;
-  border: 1px solid #1e293b;
 }
 
-/* filtros */
+/* FILTROS */
+
 .filtros-linha {
   display: flex;
   gap: 30px;
@@ -123,57 +124,61 @@ body {
   font-size: 15px;
   border-radius: 4px;
   border: none;
+  cursor: pointer;
 }
 
-/* divisor */
+/* DIVISOR */
 hr {
   margin: 25px 0;
   border: 1px solid #1e293b;
 }
 
-/* dados */
+/* DADOS */
 .dados-convenio {
   margin-top: 20px;
 }
 
-/* botão verde dashboard */
+/* LINK CLICÁVEL */
+#outLink {
+  color: #60a5fa;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+#outLink:hover {
+  text-decoration: underline;
+}
+
+/* =================================================
+   BOTÕES DO DASHBOARD
+================================================= */
+
+/* CONTAINER DOS BOTÕES */
+.caixa_botoes {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+/* BOTÃO VERDE */
 .btn-verde {
-  width: 100%;
-  margin-top: 20px;
   padding: 12px;
+  width: 50%;
   background-color: #16a34a;
   color: white;
   border: none;
   border-radius: 4px;
   font-size: 16px;
   cursor: pointer;
-}
-
-.btn-verde:disabled {
-  background-color: #4b5563;
-  cursor: not-allowed;
-}
-
-/* botão sair */
-.btn-vermelho {
-  width: 100%;
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-}
-/* Hover padrão (igual botão de login) */
-.btn-verde {
-  background-color: #16a34a;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .btn-verde:hover:not(:disabled) {
   background-color: #15803d;
+}
+
+.btn-verde:active {
+  transform: scale(0.98);
 }
 
 .btn-verde:disabled {
@@ -182,14 +187,41 @@ hr {
   transform: none;
 }
 
+/* BOTÃO SAIR */
 .btn-vermelho {
+  padding: 12px;
+  width: 50%;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .btn-vermelho:hover {
-  background-color: #b91c1c; /* vermelho mais escuro */
+  background-color: #b91c1c;
 }
 
 .btn-vermelho:active {
   transform: scale(0.98);
+}
+/* Link clicável normal */
+#outLink {
+  color: #60a5fa;
+  font-weight: 500;
+  text-decoration: none;
+}
+#outLink:hover {
+  text-decoration: underline;
+}
+
+/* Estado desativado (sem href) */
+#outLink.link-desabilitado,
+#outLink[aria-disabled="true"] {
+  color: #9ca3af;            /* cinza */
+  text-decoration: none;
+  cursor: default;
+  pointer-events: none;       /* 🔒 impede qualquer clique */
 }
