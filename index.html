@@ -2,124 +2,28 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard - Locus</title>
+  <title>Locus - Login</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body class="dashboard-page">
+<body class="login-page">
 
-  <div class="dashboard-container">
+  <div class="login-card">
+    <h1>Locus.</h1>
 
-    <h2>Consulta de convênios</h2>
+    <input type="email" id="login" placeholder="Email">
 
-    <div class="filtros-linha">
-      <div class="filtro">
-        <label>Empresa</label>
-        <select id="selectEmpresa">
-          <option value="">Selecione a empresa</option>
-        </select>
-      </div>
-
-      <div class="filtro">
-        <label>Convênio</label>
-        <select id="selectConvenio" disabled>
-          <option value="">Selecione o convênio</option>
-        </select>
-      </div>
+    <div class="senha-wrapper">
+      <input type="password" id="senha" placeholder="Senha">
+      <span id="toggleSenha" class="olho">👁</span>
     </div>
 
-    <hr>
-
-    <div class="dados-convenio">
-
-      <!-- MODO VISUALIZAÇÃO -->
-      <div id="visualizacaoConvenio">
-        <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
-        <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
-
-        <p>
-          <strong>Link:</strong>
-          <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
-          <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>📋</button>
-        </p>
-
-        <p>
-          <strong>Login:</strong> <span id="outLogin">—</span>
-          <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>📋</button>
-        </p>
-
-        <p>
-          <strong>Senha:</strong> <span id="outSenha">—</span>
-          <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>📋</button>
-        </p>
-
-        <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
-      </div>
-
-      <!-- MODO EDIÇÃO (só admin) -->
-      <div id="edicaoConvenio" hidden>
-        <label>Link</label>
-        <input type="text" id="editLink">
-
-        <label>Login</label>
-        <input type="text" id="editLogin">
-
-        <label>Senha</label>
-        <input type="text" id="editSenha">
-
-        <label>Observação</label>
-        <textarea id="editObservacao" rows="3"></textarea>
-
-        <div class="modal-botoes">
-          <button id="btnCancelarEdicao" class="btn-vermelho">Cancelar</button>
-          <button id="btnSalvarConvenio" class="btn-verde">Salvar alterações</button>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="caixa_botoes">
-      <button id="btnChamado" class="btn-verde" disabled>
-        Solicitar alteração de senha
-      </button>
-      <button class="btn-vermelho" onclick="logout()">Sair</button>
-    </div>
-
-    <!-- ÁREA DO ADMIN -->
-    <div id="adminSection" hidden>
-      <hr>
-      <h2>Área do administrador</h2>
-      <button id="btnEditarConvenio" class="btn-verde" disabled>Editar informações do convênio</button>
-
-      <h3>Chamados em aberto</h3>
-      <div id="chamadosContainer"></div>
-    </div>
-
+    <button id="btnEntrar">Entrar</button>
   </div>
 
-  <!-- MODAL DE SOLICITAÇÃO (usuário comum) -->
-  <div id="modalSolicitacao" class="modal-overlay" hidden>
-    <div class="modal-box">
-      <h3>Solicitar alteração</h3>
-      <p><strong>Login atual:</strong> <span id="modalLoginAtual">—</span></p>
-
-      <label>Novo login (opcional)</label>
-      <input type="text" id="modalNovoLogin" placeholder="Deixe em branco para não alterar">
-
-      <label>Nova senha (opcional)</label>
-      <input type="text" id="modalNovaSenha" placeholder="Deixe em branco para não alterar">
-
-      <div class="modal-botoes">
-        <button id="modalCancelar" class="btn-vermelho">Cancelar</button>
-        <button id="modalEnviar" class="btn-verde">Enviar solicitação</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- LIBS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script src="js/login.js"></script>
 
 </body>
 </html>
