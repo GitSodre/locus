@@ -536,11 +536,33 @@ async function criarConvenio() {
   selecionarConvenio(data);
 }
 
+/* Seleciona a empresa no <select>; se o valor salvo não bater com nenhuma
+   das opções fixas (dado antigo, digitado antes dessa lista existir),
+   adiciona uma opção temporária em vez de simplesmente apagar o valor. */
+function ajustarSelectEmpresa(selectEl, valor) {
+  if (!selectEl) return;
+
+  if (!valor) {
+    selectEl.value = "";
+    return;
+  }
+
+  const existe = Array.from(selectEl.options).some(o => o.value === valor);
+  if (!existe) {
+    const opt = document.createElement("option");
+    opt.value = valor;
+    opt.textContent = `${valor} (fora do padrão — selecione uma das opções para corrigir)`;
+    selectEl.appendChild(opt);
+  }
+
+  selectEl.value = valor;
+}
+
 function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
-  document.getElementById("editEmpresa").value = c.empresa || "";
+  ajustarSelectEmpresa(document.getElementById("editEmpresa"), c.empresa);
   document.getElementById("editConvenioNome").value = c.convenio || "";
   document.getElementById("editRotulo").value = c.rotulo || "";
   editLink.value = c.link || "";
