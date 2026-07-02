@@ -558,6 +558,8 @@ function ajustarSelectEmpresa(selectEl, valor) {
   selectEl.value = valor;
 }
 
+const CAMPOS_EDICAO_IDS = ["editEmpresa", "editConvenioNome", "editRotulo", "editLink", "editLogin", "editSenha", "editObservacao"];
+
 function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
@@ -570,6 +572,10 @@ function preencherFormularioEdicao(c) {
   document.getElementById("editSenha").value = c.senha || "";
   document.getElementById("editObservacao").value = c.observacao || "";
   document.getElementById("btnSalvarConvenio").disabled = false;
+
+  CAMPOS_EDICAO_IDS.forEach(id => { document.getElementById(id).disabled = false; });
+  const btnAddAcesso = document.getElementById("btnAddAcesso");
+  if (btnAddAcesso) btnAddAcesso.disabled = false;
 
   const msg = document.getElementById("msgSalvarConvenio");
   if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
@@ -587,6 +593,10 @@ function limparFormularioEdicao() {
   document.getElementById("editSenha").value = "";
   document.getElementById("editObservacao").value = "";
   document.getElementById("btnSalvarConvenio").disabled = true;
+
+  CAMPOS_EDICAO_IDS.forEach(id => { document.getElementById(id).disabled = true; });
+  const btnAddAcesso = document.getElementById("btnAddAcesso");
+  if (btnAddAcesso) btnAddAcesso.disabled = true;
 
   const listaAcessos = document.getElementById("listaAcessosExtra");
   if (listaAcessos) listaAcessos.innerHTML = "";
