@@ -1,244 +1,146 @@
-/* ========= RESET ========= */
+/* ===== Estrutura base (mantenha o que você já tinha aqui em cima) ===== */
+
 body {
-  margin: 0;
   font-family: Arial, sans-serif;
-}
-
-/* =================================================
-   LOGIN
-   Visual antigo (azul escuro) + botão verde
-================================================= */
-
-.login-page {
-  background-color: #0c143a;
-  height: 80vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-card {
-  background-color: #0206173b;
-  padding: 30px 40px;
-  border-radius: 8px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  text-align: center;
-}
-
-.login-card h1 {
-  color: white;
-  font-size: 48px;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
-  margin-bottom: 20px;
-  margin-top: 5px;
-}
-
-.login-card input {
-  display: block;
-  width: 280px;
-  padding: 10px;
-  margin: 10px auto;
-  font-size: 14px;
-  border: none;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-/* campo senha com olhinho */
-.senha-wrapper {
-  position: relative;
-}
-
-.olho {
-  position: absolute;
-  right: 10px;
-  top: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-/* BOTÃO DE LOGIN */
-.login-card button {
-  width: 280px;
-  padding: 12px;
-  margin-top: 15px;
-  background-color: #16a34a;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.login-card button:hover {
-  background-color: #15803d;
-}
-
-.login-card button:active {
-  transform: scale(0.98);
-}
-
-/* =================================================
-   DASHBOARD
-================================================= */
-
-.dashboard-page {
-  background-color: #0c143a;
-  min-height: 100vh;
-  padding: 80px;
-  color: #e5e7eb;
+  background: #f4f6f8;
+  margin: 0;
 }
 
 .dashboard-container {
-  max-width: 900px;
-  margin: auto;
-  background-color: #0206173b;
-  padding: 30px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  border-radius: 8px;
+  max-width: 700px;
+  margin: 40px auto;
+  background: #fff;
+  padding: 24px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
 }
-
-/* FILTROS */
 
 .filtros-linha {
   display: flex;
-  gap: 30px;
-  margin-top: 20px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .filtro {
   flex: 1;
-}
-
-.filtro label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: bold;
+  display: flex;
+  flex-direction: column;
 }
 
 .filtro select {
-  width: 100%;
-  padding: 10px;
-  font-size: 15px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.dados-convenio p {
+  margin: 10px 0;
+}
+
+.link-desabilitado {
+  color: #999;
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.btn-copy {
   border: none;
+  background: transparent;
   cursor: pointer;
+  font-size: 14px;
 }
 
-/* DIVISOR */
-hr {
-  margin: 25px 0;
-  border: 1px solid #1e293b;
-}
-
-/* DADOS */
-.dados-convenio {
+.caixa_botoes {
+  display: flex;
+  justify-content: space-between;
   margin-top: 20px;
 }
 
-/* LINK CLICÁVEL (normal/hover) */
-#outLink {
-  color: #60a5fa;
-  font-weight: 500;
-  text-decoration: none;
-}
-#outLink:hover {
-  text-decoration: underline;
-}
-
-/* Estado desativado (sem href) – link realmente não clica */
-#outLink.link-desabilitado,
-#outLink[aria-disabled="true"] {
-  color: #9ca3af;           /* cinza */
-  text-decoration: none;
-  cursor: default;
-  pointer-events: none;     /* bloqueia clique */
-}
-
-/* =================================================
-   BOTÕES DO DASHBOARD
-================================================= */
-
-/* CONTAINER DOS BOTÕES (lado a lado) */
-.caixa_botoes {
-  display: flex;
-  gap: 15px;
-  margin-top: 25px;
-}
-
-/* BOTÃO VERDE */
 .btn-verde {
-  padding: 12px;
-  width: 50%;
-  background-color: #16a34a;
-  color: white;
+  background: #2e7d32;
+  color: #fff;
   border: none;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: 10px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
 }
-.btn-verde:hover:not(:disabled) {
-  background-color: #15803d;
-}
-.btn-verde:active {
-  transform: scale(0.98);
-}
+
 .btn-verde:disabled {
-  background-color: #4b5563;
+  background: #a5c9a8;
   cursor: not-allowed;
-  transform: none;
 }
 
-/* BOTÃO SAIR */
 .btn-vermelho {
-  padding: 12px;
-  width: 50%;
-  background-color: #dc2626;
-  color: white;
+  background: #c62828;
+  color: #fff;
   border: none;
-  border-radius: 4px;
-  font-size: 16px;
+  padding: 10px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-.btn-vermelho:hover {
-  background-color: #b91c1c;
-}
-.btn-vermelho:active {
-  transform: scale(0.98);
 }
 
-/* =================================================
-   BOTÕES DE COPIAR (ao lado de Link/Login/Senha)
-================================================= */
-
-/* botão pequeno */
-.btn-copy {
-  margin-left: 8px;
-  padding: 2px 6px;
-  font-size: 13px;
-  line-height: 1;
-  background: #0f172a;
-  color: #e5e7eb;
-  border: 1px solid #334155;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color .2s ease, transform .05s ease;
-  vertical-align: middle;
+/* ===== NOVO: edição admin ===== */
+#edicaoConvenio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.btn-copy:hover:not(:disabled) { background: #1e293b; }
-.btn-copy:active:not(:disabled) { transform: scale(0.98); }
-.btn-copy:disabled { opacity: .45; cursor: not-allowed; }
-/* garante esconder quando hidden */
-.btn-copy[hidden] { display: none !important; }
 
-/* ícone dentro do botão de copiar */
-.btn-copy .icon-copy {
-  width: 14px;
-  height: 14px;
-  display: inline-block;
-  vertical-align: -2px;
+#edicaoConvenio input,
+#edicaoConvenio textarea {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ===== NOVO: área admin / chamados ===== */
+#adminSection {
+  margin-top: 24px;
+}
+
+.chamado-item {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fafafa;
+}
+
+.chamado-item p {
+  margin: 4px 0;
+}
+
+/* ===== NOVO: modal de solicitação ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-box {
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-box input {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.modal-botoes {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
 }
