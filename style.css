@@ -387,6 +387,15 @@ hr {
   margin-bottom: 8px;
   color: #93c5fd;
 }
+.btn-solicitar-extra {
+  margin-top: 6px;
+}
+
+.chamado-acesso-titulo {
+  color: #93c5fd !important;
+  font-weight: bold;
+  font-size: 13px !important;
+}
 
 /* Mensagens de retorno (sucesso/erro) */
 .msg-feedback {
