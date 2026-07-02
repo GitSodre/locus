@@ -13,9 +13,6 @@
     <div class="top">
       <h1 class="tituloden">Locus.</h1>
       <button class="btn-vermelhotop" onclick="logout()">Sair</button>
-      <button class="pai-admin" id="btnPainelAdmin" onclick="toggleAdminPanels()" hidden>
-        Painel Admin
-      </button>
     </div>
     
     <H2>Consulta de convênios</H2>
@@ -44,16 +41,9 @@
 
       <p>
         <strong>Link:</strong>
-        <!-- Sem href por padrão; JS ativa quando houver URL -->
         <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
-        <!-- Botão copiar (aparece só quando houver link) -->
         <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>
-          <!-- Heroicons (outline) -->
-          <svg xmlns="http://www.w3.org/2000/svg"
-               viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="1.5"
-               stroke-linecap="round" stroke-linejoin="round"
-               class="icon-copy" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
             <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
           </svg>
         </button>
@@ -62,11 +52,7 @@
       <p>
         <strong>Login:</strong> <span id="outLogin">—</span>
         <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>
-          <svg xmlns="http://www.w3.org/2000/svg"
-               viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="1.5"
-               stroke-linecap="round" stroke-linejoin="round"
-               class="icon-copy" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
             <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
           </svg>
         </button>
@@ -75,22 +61,24 @@
       <p>
         <strong>Senha:</strong> <span id="outSenha">—</span>
         <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>
-          <svg xmlns="http://www.w3.org/2000/svg"
-               viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" stroke-width="1.5"
-               stroke-linecap="round" stroke-linejoin="round"
-               class="icon-copy" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
             <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
           </svg>
         </button>
       </p>
 
       <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
+
+      <!-- Só aparece quando o convênio tiver acessos extras cadastrados -->
+      <div id="outrosAcessos" class="outros-acessos" hidden>
+        <h3>Outros acessos</h3>
+        <div id="listaOutrosAcessos"></div>
+      </div>
     </div>
 
     <div class="caixa_botoes">
       <button id="btnChamado" class="btn-verde" disabled>
-        Solicitar alteração de senha
+        Solicitar alteração de acesso
       </button>
     </div>
 
@@ -102,6 +90,13 @@
       <hr>
       <h2>Painel Admin — Editar convênio</h2>
       <p class="painel-aviso">Selecione uma empresa e um convênio acima para editar os dados abaixo.</p>
+
+      <!-- Aviso mostrado quando o formulário foi preenchido a partir de um chamado -->
+      <p id="avisoRevisao" class="aviso-revisao" hidden>
+        Revisando solicitação de <strong id="avisoRevisaoNome"></strong> —
+        ao clicar em "Salvar alterações", o chamado será marcado como concluído automaticamente.
+        <button type="button" id="btnCancelarRevisao" class="link-cancelar">cancelar revisão</button>
+      </p>
 
       <div class="form-grid">
         <div class="campo">
@@ -125,6 +120,16 @@
         </div>
       </div>
 
+      <!-- Acessos adicionais (opcional) — só para convênios que têm mais de 1 link/login/senha -->
+      <div class="subsecao-acessos">
+        <div class="subsecao-header">
+          <h3>Acessos adicionais (opcional)</h3>
+          <button type="button" id="btnAddAcesso" class="btn-verde btn-small">+ Adicionar acesso</button>
+        </div>
+        <p class="painel-aviso">Use isto apenas quando o convênio realmente tiver mais de um link/login/senha. Linhas em branco não são salvas.</p>
+        <div id="listaAcessosExtra"></div>
+      </div>
+
       <div class="caixa_botoes">
         <button id="btnSalvarConvenio" class="btn-verde" disabled>Salvar alterações</button>
       </div>
@@ -132,33 +137,59 @@
     </div>
 
     <!-- ============================================================
-         PAINEL ADMIN — CHAMADOS DE ALTERAÇÃO DE SENHA
+         PAINEL ADMIN — CHAMADOS (recolhível)
          Visível apenas para usuários com tipo = 'admin'
     ============================================================= -->
-    <div id="painelChamados" class="painel-admin" hidden>
+    <details id="painelChamados" class="painel-admin" hidden>
       <hr>
-      <h2>Chamados de alteração de senha <span id="badgeChamados" class="badge" hidden>0</span></h2>
+      <summary>
+        <h2>Chamados de alteração <span id="badgeChamados" class="badge" hidden>0</span></h2>
+      </summary>
 
       <div id="listaChamados" class="lista-chamados">
         <p class="painel-aviso">Nenhum chamado no momento.</p>
       </div>
-    </div>
+    </details>
 
   </div>
 
   <!-- ============================================================
-       MODAL — SOLICITAR ALTERAÇÃO DE SENHA (usuários normais)
+       MODAL — SOLICITAR ALTERAÇÃO DE ACESSO (usuários normais)
   ============================================================= -->
   <div id="modalChamado" class="modal-overlay" hidden>
     <div class="modal-card">
-      <h2>Solicitar alteração de senha</h2>
+      <h2>Solicitar alteração de acesso</h2>
       <p class="painel-aviso">
         Empresa: <strong id="modalEmpresa">—</strong><br>
         Convênio: <strong id="modalConvenio">—</strong>
       </p>
+      <p class="painel-aviso">
+        Marque somente os campos que deseja alterar. O que ficar desmarcado continua com o valor atual.
+      </p>
 
-      <label for="modalNovaSenha">Nova senha desejada</label>
-      <input type="text" id="modalNovaSenha" placeholder="Digite a nova senha">
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarLogin">
+          Alterar login <span class="valor-atual">(atual: <span id="modalLoginAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovoLogin" placeholder="Novo login" disabled>
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarSenha">
+          Alterar senha <span class="valor-atual">(atual: <span id="modalSenhaAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovaSenha" placeholder="Nova senha" disabled>
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarLink">
+          Alterar link <span class="valor-atual">(atual: <span id="modalLinkAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovoLink" placeholder="Novo link" disabled>
+      </div>
 
       <div class="modal-botoes">
         <button id="btnCancelarChamado" class="btn-vermelho">Cancelar</button>
