@@ -39,6 +39,9 @@
       <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
       <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
 
+      <!-- Só aparece quando o acesso principal tiver um rótulo definido -->
+      <p id="outRotuloPrincipal" class="acesso-extra-titulo" hidden>—</p>
+
       <p>
         <strong>Link:</strong>
         <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
@@ -99,6 +102,11 @@
       </p>
 
       <div class="form-grid">
+        <div class="campo campo-full">
+          <label for="editRotulo">Rótulo deste acesso (opcional)</label>
+          <input type="text" id="editRotulo" placeholder="Ex: Portal principal, Acesso web...">
+        </div>
+
         <div class="campo">
           <label for="editLink">Link</label>
           <input type="text" id="editLink" placeholder="https://...">
