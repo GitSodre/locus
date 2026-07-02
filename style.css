@@ -329,7 +329,8 @@ hr {
 }
 
 .campo input,
-.campo textarea {
+.campo textarea,
+.campo select {
   padding: 10px;
   font-size: 14px;
   border: none;
@@ -338,6 +339,7 @@ hr {
   font-family: inherit;
   resize: vertical;
 }
+.campo select { cursor: pointer; }
 
 /* Acessos adicionais (opcional) */
 .subsecao-acessos { margin-top: 25px; }
