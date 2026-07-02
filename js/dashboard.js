@@ -1,9 +1,11 @@
 /*********************************
  * DASHBOARD.JS – FINAL E ESTÁVEL
  * + COPIAR + SHOW/HIDE
- * + PAINEL ADMIN (editar convênio)
- * + CHAMADOS (solicitar / gerenciar troca de senha)
+ * + PAINEL ADMIN (editar convênio + acessos adicionais)
+ * + CHAMADOS (login / senha / link) com revisão facilitada
  *********************************/
+
+const ICON_COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true"><path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/></svg>`;
 
 // logout global
 window.logout = async function () {
@@ -15,7 +17,9 @@ let conveniosCache = [];
 let isAdmin = false;
 let currentUserEmail = "";
 let currentUserName = "";
-let convenioAtual = null; // objeto do convênio selecionado no momento
+let convenioAtual = null;       // convênio selecionado nos filtros
+let acessosExtraAtual = [];     // acessos adicionais do convênio selecionado
+let chamadoEmRevisao = null;    // id do chamado sendo revisado no formulário do admin
 
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
@@ -27,12 +31,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  limparDados();            // estado inicial
-  prepararBotoesDeCopia();  // listeners de copiar (uma única vez)
-  prepararPainelAdmin();    // listener do botão "Salvar alterações"
-  prepararModalChamado();   // listeners do modal de solicitação
+  limparDados();
+  prepararBotoesDeCopia();
+  prepararPainelAdmin();
+  prepararModalChamado();
 
-  await verificarPapel();   // define isAdmin e ajusta a tela
+  await verificarPapel();
 
   const { data, error } = await supabaseClient
     .from("convenios")
@@ -51,7 +55,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 /* =====================================================
    PAPEL DO USUÁRIO (ADMIN x FUNCIONÁRIO)
-   Consulta a tabela "usuarios" pelo e-mail autenticado.
 ===================================================== */
 async function verificarPapel() {
   const { data: userData } = await supabaseClient.auth.getUser();
@@ -66,33 +69,21 @@ async function verificarPapel() {
     .eq("email", currentUserEmail)
     .maybeSingle();
 
-  if (error) {
-    console.error("Erro ao verificar papel do usuário:", error);
-  }
+  if (error) console.error("Erro ao verificar papel do usuário:", error);
 
   isAdmin = (userRow?.tipo || "").toString().toLowerCase() === "admin";
   aplicarVisibilidadeAdmin();
 }
 
 function aplicarVisibilidadeAdmin() {
-  const btnPainelAdmin = document.getElementById("btnPainelAdmin");
   const painelEdicao = document.getElementById("painelEdicao");
   const painelChamados = document.getElementById("painelChamados");
 
-  if (btnPainelAdmin) btnPainelAdmin.hidden = !isAdmin;
   if (painelEdicao) painelEdicao.hidden = !isAdmin;
   if (painelChamados) painelChamados.hidden = !isAdmin;
 
   if (isAdmin) carregarChamados();
 }
-
-// Rola a tela até o painel de edição (o botão "Painel Admin" só aparece para admins)
-window.toggleAdminPanels = function () {
-  const painelEdicao = document.getElementById("painelEdicao");
-  if (painelEdicao && !painelEdicao.hidden) {
-    painelEdicao.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-};
 
 /* ================= EMPRESAS ================= */
 function carregarEmpresas() {
@@ -124,7 +115,7 @@ function carregarConvenios(empresa) {
   selectConvenio.disabled = !empresa;
 
   if (!empresa) {
-    setCopyState(); // garante botões ocultos
+    setCopyState();
     return;
   }
 
@@ -151,20 +142,22 @@ function carregarConvenios(empresa) {
       return;
     }
 
-    convenioAtual = c;
-
-    document.getElementById("outConvenio").textContent = c.convenio;
-    atualizarExibicaoConvenio(c);
-
-    // Habilita ação de solicitar troca de senha
-    document.getElementById("btnChamado").disabled = false;
-
-    // Se for admin, popula o formulário de edição
-    if (isAdmin) preencherFormularioEdicao(c);
-
-    // Atualiza visibilidade dos botões de copiar
-    setCopyState();
+    cancelarRevisao();
+    selecionarConvenio(c);
   };
+}
+
+async function selecionarConvenio(c) {
+  convenioAtual = c;
+  document.getElementById("outConvenio").textContent = c.convenio;
+  atualizarExibicaoConvenio(c);
+  document.getElementById("btnChamado").disabled = false;
+
+  await carregarAcessosExtra(c.id);
+
+  if (isAdmin) preencherFormularioEdicao(c);
+
+  setCopyState();
 }
 
 /* Atualiza os campos Link / Login / Senha / Observação exibidos na tela */
@@ -192,7 +185,175 @@ function atualizarExibicaoConvenio(c) {
   document.getElementById("outObservacao").textContent = safeText(c.observacao);
 }
 
-/* ================= COPIAR ================= */
+/* =====================================================
+   ACESSOS ADICIONAIS (convênios com mais de 1 link/login/senha)
+===================================================== */
+async function carregarAcessosExtra(convenioId) {
+  const { data, error } = await supabaseClient
+    .from("convenio_acessos")
+    .select("*")
+    .eq("convenio_id", convenioId)
+    .order("ordem", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao carregar acessos adicionais:", error);
+    acessosExtraAtual = [];
+  } else {
+    acessosExtraAtual = (data || []).map(a => ({ ...a, _removido: false }));
+  }
+
+  renderizarOutrosAcessosView();
+  if (isAdmin) renderizarAcessosExtraForm();
+}
+
+function renderizarOutrosAcessosView() {
+  const container = document.getElementById("outrosAcessos");
+  const lista = document.getElementById("listaOutrosAcessos");
+  if (!container || !lista) return;
+
+  const validos = acessosExtraAtual.filter(a => !a._removido && (a.link || a.login || a.senha));
+
+  if (validos.length === 0) {
+    container.hidden = true;
+    lista.innerHTML = "";
+    return;
+  }
+
+  container.hidden = false;
+  lista.innerHTML = "";
+
+  validos.forEach(a => {
+    const card = document.createElement("div");
+    card.className = "acesso-extra-card";
+
+    const titulo = document.createElement("p");
+    titulo.className = "acesso-extra-titulo";
+    titulo.textContent = a.rotulo || "Acesso adicional";
+    card.appendChild(titulo);
+
+    if (a.link) card.appendChild(criarLinhaAcessoView("Link", a.link, true));
+    if (a.login) card.appendChild(criarLinhaAcessoView("Login", a.login));
+    if (a.senha) card.appendChild(criarLinhaAcessoView("Senha", a.senha));
+
+    lista.appendChild(card);
+  });
+}
+
+function criarLinhaAcessoView(rotulo, valor, ehLink) {
+  const p = document.createElement("p");
+
+  const strong = document.createElement("strong");
+  strong.textContent = `${rotulo}: `;
+  p.appendChild(strong);
+
+  if (ehLink) {
+    const url = valor.startsWith("http") ? valor : "https://" + valor;
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = url;
+    p.appendChild(a);
+    p.appendChild(criarBotaoCopiar(url, "link"));
+  } else {
+    const span = document.createElement("span");
+    span.textContent = valor;
+    p.appendChild(span);
+    p.appendChild(criarBotaoCopiar(valor, rotulo.toLowerCase()));
+  }
+
+  return p;
+}
+
+function criarBotaoCopiar(valor, label) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn-copy";
+  btn.title = `Copiar ${label}`;
+  btn.setAttribute("aria-label", `Copiar ${label}`);
+  btn.innerHTML = ICON_COPY_SVG;
+  btn.addEventListener("click", () => copyToClipboard(valor));
+  return btn;
+}
+
+/* Formulário de administração dos acessos adicionais */
+function renderizarAcessosExtraForm() {
+  const lista = document.getElementById("listaAcessosExtra");
+  if (!lista) return;
+
+  lista.innerHTML = "";
+
+  acessosExtraAtual.forEach((a, idx) => {
+    if (a._removido) return;
+
+    const linha = document.createElement("div");
+    linha.className = "acesso-extra-linha";
+    linha.innerHTML = `
+      <input type="text" class="ae-rotulo" placeholder="Rótulo (ex: Acesso financeiro)" value="${escapeAttr(a.rotulo || "")}">
+      <input type="text" class="ae-link" placeholder="Link" value="${escapeAttr(a.link || "")}">
+      <input type="text" class="ae-login" placeholder="Login" value="${escapeAttr(a.login || "")}">
+      <input type="text" class="ae-senha" placeholder="Senha" value="${escapeAttr(a.senha || "")}">
+    `;
+
+    const btnRemover = document.createElement("button");
+    btnRemover.type = "button";
+    btnRemover.className = "btn-vermelho btn-small";
+    btnRemover.textContent = "Remover";
+    btnRemover.onclick = () => {
+      if (a.id) {
+        a._removido = true;
+      } else {
+        acessosExtraAtual.splice(idx, 1);
+      }
+      renderizarAcessosExtraForm();
+    };
+    linha.appendChild(btnRemover);
+
+    linha.querySelector(".ae-rotulo").addEventListener("input", e => { a.rotulo = e.target.value; });
+    linha.querySelector(".ae-link").addEventListener("input", e => { a.link = e.target.value; });
+    linha.querySelector(".ae-login").addEventListener("input", e => { a.login = e.target.value; });
+    linha.querySelector(".ae-senha").addEventListener("input", e => { a.senha = e.target.value; });
+
+    lista.appendChild(linha);
+  });
+}
+
+function escapeAttr(str) {
+  return (str ?? "").toString().replaceAll('"', "&quot;");
+}
+
+async function salvarAcessosExtra(convenioId) {
+  const paraExcluir = acessosExtraAtual.filter(a => a._removido && a.id);
+  for (const a of paraExcluir) {
+    await supabaseClient.from("convenio_acessos").delete().eq("id", a.id);
+  }
+
+  const paraAtualizar = acessosExtraAtual.filter(a => !a._removido && a.id);
+  for (const a of paraAtualizar) {
+    await supabaseClient.from("convenio_acessos")
+      .update({ rotulo: a.rotulo || null, link: a.link || null, login: a.login || null, senha: a.senha || null })
+      .eq("id", a.id);
+  }
+
+  const paraInserir = acessosExtraAtual
+    .filter(a => !a._removido && !a.id && (a.rotulo || a.link || a.login || a.senha))
+    .map((a, i) => ({
+      convenio_id: convenioId,
+      rotulo: a.rotulo || null,
+      link: a.link || null,
+      login: a.login || null,
+      senha: a.senha || null,
+      ordem: i
+    }));
+
+  if (paraInserir.length > 0) {
+    await supabaseClient.from("convenio_acessos").insert(paraInserir);
+  }
+
+  await carregarAcessosExtra(convenioId);
+}
+
+/* ================= COPIAR (campos principais) ================= */
 function prepararBotoesDeCopia() {
   const btnCopyLink  = document.getElementById("copyLink");
   const btnCopyLogin = document.getElementById("copyLogin");
@@ -264,17 +425,21 @@ async function copyToClipboard(text) {
 }
 
 /* =====================================================
-   PAINEL ADMIN — EDIÇÃO DO CONVÊNIO SELECIONADO
+   PAINEL ADMIN — EDIÇÃO DO CONVÊNIO
 ===================================================== */
 function prepararPainelAdmin() {
-  const btnSalvar = document.getElementById("btnSalvarConvenio");
-  if (!btnSalvar) return;
-  btnSalvar.addEventListener("click", salvarConvenio);
+  document.getElementById("btnSalvarConvenio")?.addEventListener("click", salvarConvenio);
+  document.getElementById("btnCancelarRevisao")?.addEventListener("click", cancelarRevisao);
+
+  document.getElementById("btnAddAcesso")?.addEventListener("click", () => {
+    acessosExtraAtual.push({ id: null, rotulo: "", link: "", login: "", senha: "", ordem: acessosExtraAtual.length, _removido: false });
+    renderizarAcessosExtraForm();
+  });
 }
 
 function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
-  if (!editLink) return; // painel não existe nesta página
+  if (!editLink) return;
 
   editLink.value = c.link || "";
   document.getElementById("editLogin").value = c.login || "";
@@ -295,6 +460,9 @@ function limparFormularioEdicao() {
   document.getElementById("editSenha").value = "";
   document.getElementById("editObservacao").value = "";
   document.getElementById("btnSalvarConvenio").disabled = true;
+
+  const listaAcessos = document.getElementById("listaAcessosExtra");
+  if (listaAcessos) listaAcessos.innerHTML = "";
 
   const msg = document.getElementById("msgSalvarConvenio");
   if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
@@ -321,7 +489,6 @@ async function salvarConvenio() {
     return;
   }
 
-  // Atualiza objeto atual e cache local
   convenioAtual.link = novoLink;
   convenioAtual.login = novoLogin;
   convenioAtual.senha = novaSenha;
@@ -330,15 +497,28 @@ async function salvarConvenio() {
   const idx = conveniosCache.findIndex(x => x.id === convenioAtual.id);
   if (idx !== -1) conveniosCache[idx] = { ...conveniosCache[idx], ...convenioAtual };
 
+  await salvarAcessosExtra(convenioAtual.id);
+
   atualizarExibicaoConvenio(convenioAtual);
   setCopyState();
 
   msg.classList.remove("erro");
   msg.textContent = "Alterações salvas com sucesso.";
+
+  if (chamadoEmRevisao) {
+    const idParaConcluir = chamadoEmRevisao;
+    chamadoEmRevisao = null;
+
+    const aviso = document.getElementById("avisoRevisao");
+    if (aviso) aviso.hidden = true;
+
+    await concluirChamadoPorId(idParaConcluir);
+    msg.textContent = "Alterações salvas e chamado concluído.";
+  }
 }
 
 /* =====================================================
-   MODAL — SOLICITAR ALTERAÇÃO DE SENHA (usuário normal)
+   MODAL — SOLICITAR ALTERAÇÃO DE ACESSO (usuário normal)
 ===================================================== */
 function prepararModalChamado() {
   const btnChamado = document.getElementById("btnChamado");
@@ -348,12 +528,28 @@ function prepararModalChamado() {
 
   if (!btnChamado || !modal) return;
 
+  ligarCheckboxCampo("chkAlterarLogin", "modalNovoLogin");
+  ligarCheckboxCampo("chkAlterarSenha", "modalNovaSenha");
+  ligarCheckboxCampo("chkAlterarLink",  "modalNovoLink");
+
   btnChamado.addEventListener("click", () => {
     if (!convenioAtual) return;
 
     document.getElementById("modalEmpresa").textContent = convenioAtual.empresa;
     document.getElementById("modalConvenio").textContent = convenioAtual.convenio;
-    document.getElementById("modalNovaSenha").value = "";
+
+    document.getElementById("modalLoginAtual").textContent = safeText(convenioAtual.login);
+    document.getElementById("modalSenhaAtual").textContent = safeText(convenioAtual.senha);
+    document.getElementById("modalLinkAtual").textContent = safeText(convenioAtual.link);
+
+    ["chkAlterarLogin", "chkAlterarSenha", "chkAlterarLink"].forEach(id => {
+      document.getElementById(id).checked = false;
+    });
+    ["modalNovoLogin", "modalNovaSenha", "modalNovoLink"].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = "";
+      el.disabled = true;
+    });
 
     const msg = document.getElementById("msgModalChamado");
     msg.textContent = "";
@@ -367,11 +563,23 @@ function prepararModalChamado() {
   btnConfirmar?.addEventListener("click", async () => {
     if (!convenioAtual) return;
 
+    const alterarLogin = document.getElementById("chkAlterarLogin").checked;
+    const alterarSenha = document.getElementById("chkAlterarSenha").checked;
+    const alterarLink  = document.getElementById("chkAlterarLink").checked;
+
+    const novoLogin = document.getElementById("modalNovoLogin").value.trim();
     const novaSenha = document.getElementById("modalNovaSenha").value.trim();
+    const novoLink  = document.getElementById("modalNovoLink").value.trim();
+
     const msg = document.getElementById("msgModalChamado");
 
-    if (!novaSenha) {
-      msg.textContent = "Digite a nova senha desejada.";
+    if (!alterarLogin && !alterarSenha && !alterarLink) {
+      msg.textContent = "Marque ao menos um campo para alterar.";
+      msg.classList.add("erro");
+      return;
+    }
+    if ((alterarLogin && !novoLogin) || (alterarSenha && !novaSenha) || (alterarLink && !novoLink)) {
+      msg.textContent = "Preencha o novo valor dos campos marcados.";
       msg.classList.add("erro");
       return;
     }
@@ -381,8 +589,11 @@ function prepararModalChamado() {
       usuario_nome: currentUserName,
       empresa: convenioAtual.empresa,
       convenio: convenioAtual.convenio,
+      convenio_id: convenioAtual.id,
       login: convenioAtual.login,
-      nova_senha: novaSenha,
+      novo_login: alterarLogin ? novoLogin : null,
+      nova_senha: alterarSenha ? novaSenha : null,
+      novo_link: alterarLink ? novoLink : null,
       status: "aberto",
       visualizado: false
     });
@@ -396,8 +607,19 @@ function prepararModalChamado() {
 
     msg.classList.remove("erro");
     msg.textContent = "Solicitação enviada com sucesso!";
-
     setTimeout(() => { modal.hidden = true; }, 1200);
+  });
+}
+
+function ligarCheckboxCampo(checkboxId, inputId) {
+  const chk = document.getElementById(checkboxId);
+  const input = document.getElementById(inputId);
+  if (!chk || !input) return;
+
+  chk.addEventListener("change", () => {
+    input.disabled = !chk.checked;
+    if (!chk.checked) input.value = "";
+    else input.focus();
   });
 }
 
@@ -426,12 +648,8 @@ function renderizarChamados(chamados) {
   const abertos = chamados.filter(c => normalizarStatus(c.status) !== "concluido");
 
   if (badge) {
-    if (abertos.length > 0) {
-      badge.textContent = abertos.length;
-      badge.hidden = false;
-    } else {
-      badge.hidden = true;
-    }
+    if (abertos.length > 0) { badge.textContent = abertos.length; badge.hidden = false; }
+    else badge.hidden = true;
   }
 
   if (chamados.length === 0) {
@@ -443,15 +661,20 @@ function renderizarChamados(chamados) {
 
   chamados.forEach(c => {
     const status = normalizarStatus(c.status);
+    const convenioRef = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
+      || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
     const item = document.createElement("div");
     item.className = "chamado-item";
 
     const info = document.createElement("div");
     info.className = "chamado-info";
+
+    const diff = montarDiffChamado(c, convenioRef);
+
     info.innerHTML = `
       <p><strong>${escapeHtml(c.usuario_nome || c.usuario)}</strong> — ${escapeHtml(c.empresa)} / ${escapeHtml(c.convenio)}</p>
-      <p>Login: ${escapeHtml(c.login || "—")} &nbsp;|&nbsp; Nova senha solicitada: ${escapeHtml(c.nova_senha || "—")}</p>
+      <p class="chamado-diff">${diff || "Nenhuma alteração especificada."}</p>
       <p class="chamado-data">Aberto em: ${formatarData(c.data_abertura)}</p>
     `;
 
@@ -463,18 +686,16 @@ function renderizarChamados(chamados) {
     statusSpan.textContent = rotuloStatus(status);
     acoes.appendChild(statusSpan);
 
-    if (status === "aberto") {
-      const btnIniciar = document.createElement("button");
-      btnIniciar.className = "btn-verde btn-small";
-      btnIniciar.textContent = "Iniciar";
-      btnIniciar.onclick = () => atualizarStatusChamado(c.id, "em_andamento");
-      acoes.appendChild(btnIniciar);
-    }
+    if (status !== "concluido") {
+      const btnRevisar = document.createElement("button");
+      btnRevisar.className = "btn-verde btn-small";
+      btnRevisar.textContent = "Revisar no formulário";
+      btnRevisar.onclick = () => revisarChamado(c);
+      acoes.appendChild(btnRevisar);
 
-    if (status === "em_andamento") {
       const btnConcluir = document.createElement("button");
       btnConcluir.className = "btn-verde btn-small";
-      btnConcluir.textContent = "Concluir";
+      btnConcluir.textContent = "Concluir direto";
       btnConcluir.onclick = () => concluirChamado(c);
       acoes.appendChild(btnConcluir);
     }
@@ -485,16 +706,22 @@ function renderizarChamados(chamados) {
   });
 }
 
+function montarDiffChamado(c, convenioRef) {
+  const linhas = [];
+  if (c.novo_login) linhas.push(`Login: ${escapeHtml(convenioRef?.login || "—")} → <strong>${escapeHtml(c.novo_login)}</strong>`);
+  if (c.nova_senha) linhas.push(`Senha: ${escapeHtml(convenioRef?.senha || "—")} → <strong>${escapeHtml(c.nova_senha)}</strong>`);
+  if (c.novo_link)  linhas.push(`Link: ${escapeHtml(convenioRef?.link || "—")} → <strong>${escapeHtml(c.novo_link)}</strong>`);
+  return linhas.join("<br>");
+}
+
 function normalizarStatus(status) {
-  // remove aspas literais que possam ter vindo do valor DEFAULT antigo do banco
   const s = (status || "").toString().replace(/'/g, "").trim().toLowerCase();
-  if (s.includes("andamento")) return "em_andamento";
   if (s.includes("conclu")) return "concluido";
   return "aberto";
 }
 
 function rotuloStatus(status) {
-  return { aberto: "Aberto", em_andamento: "Em andamento", concluido: "Concluído" }[status] || status;
+  return status === "concluido" ? "Concluído" : "Aberto";
 }
 
 function formatarData(iso) {
@@ -513,24 +740,84 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;");
 }
 
-async function atualizarStatusChamado(id, novoStatus) {
-  const payload = { status: novoStatus };
-  if (novoStatus === "em_andamento") payload.data_inicio = new Date().toISOString();
+/* Revisar no formulário: seleciona o convênio e pré-preenche com o que foi pedido */
+function revisarChamado(c) {
+  const convenio = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
+    || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
-  const { error } = await supabaseClient.from("chamados").update(payload).eq("id", id);
-
-  if (error) {
-    console.error("Erro ao atualizar chamado:", error);
-    alert("Não foi possível atualizar o chamado.");
+  if (!convenio) {
+    alert("Não foi possível localizar o convênio deste chamado.");
     return;
   }
 
-  carregarChamados();
+  const selectEmpresa = document.getElementById("selectEmpresa");
+  const selectConvenio = document.getElementById("selectConvenio");
+
+  selectEmpresa.value = convenio.empresa;
+  carregarConvenios(convenio.empresa);
+  selectConvenio.value = convenio.convenio;
+
+  selecionarConvenio(convenio).then(() => {
+    if (c.novo_login) document.getElementById("editLogin").value = c.novo_login;
+    if (c.nova_senha) document.getElementById("editSenha").value = c.nova_senha;
+    if (c.novo_link)  document.getElementById("editLink").value = c.novo_link;
+
+    chamadoEmRevisao = c.id;
+    mostrarAvisoRevisao(c);
+
+    document.getElementById("painelEdicao").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
+function mostrarAvisoRevisao(c) {
+  const aviso = document.getElementById("avisoRevisao");
+  if (!aviso) return;
+  document.getElementById("avisoRevisaoNome").textContent = c.usuario_nome || c.usuario;
+  aviso.hidden = false;
+}
+
+function cancelarRevisao() {
+  chamadoEmRevisao = null;
+  const aviso = document.getElementById("avisoRevisao");
+  if (aviso) aviso.hidden = true;
+  if (convenioAtual && isAdmin) preencherFormularioEdicao(convenioAtual);
+}
+
+/* Concluir direto: aplica as alterações sem passar pelo formulário */
 async function concluirChamado(c) {
-  // 1) marca o chamado como concluído
-  const { error: errChamado } = await supabaseClient
+  const payload = {};
+  if (c.novo_login) payload.login = c.novo_login;
+  if (c.nova_senha) payload.senha = c.nova_senha;
+  if (c.novo_link)  payload.link = c.novo_link.startsWith("http") ? c.novo_link : "https://" + c.novo_link;
+
+  if (Object.keys(payload).length > 0) {
+    let query = supabaseClient.from("convenios").update(payload);
+    query = c.convenio_id ? query.eq("id", c.convenio_id) : query.eq("empresa", c.empresa).eq("convenio", c.convenio);
+    const { error: errConvenio } = await query;
+
+    if (errConvenio) {
+      console.error("Erro ao aplicar alterações no convênio:", errConvenio);
+      alert("Não foi possível aplicar as alterações no convênio.");
+      return;
+    }
+
+    const idx = conveniosCache.findIndex(x => (c.convenio_id && x.id === c.convenio_id) || (x.empresa === c.empresa && x.convenio === c.convenio));
+    if (idx !== -1) {
+      Object.assign(conveniosCache[idx], payload);
+      if (convenioAtual && convenioAtual.id === conveniosCache[idx].id) {
+        Object.assign(convenioAtual, payload);
+        atualizarExibicaoConvenio(convenioAtual);
+        if (isAdmin) preencherFormularioEdicao(convenioAtual);
+        setCopyState();
+      }
+    }
+  }
+
+  await concluirChamadoPorId(c.id);
+}
+
+async function concluirChamadoPorId(id) {
+  const { error } = await supabaseClient
     .from("chamados")
     .update({
       status: "concluido",
@@ -538,35 +825,12 @@ async function concluirChamado(c) {
       admin_concluiu_email: currentUserEmail,
       admin_concluiu_nome: currentUserName
     })
-    .eq("id", c.id);
+    .eq("id", id);
 
-  if (errChamado) {
-    console.error("Erro ao concluir chamado:", errChamado);
+  if (error) {
+    console.error("Erro ao concluir chamado:", error);
     alert("Não foi possível concluir o chamado.");
     return;
-  }
-
-  // 2) aplica a nova senha no convênio correspondente
-  const { error: errConvenio } = await supabaseClient
-    .from("convenios")
-    .update({ senha: c.nova_senha })
-    .eq("empresa", c.empresa)
-    .eq("convenio", c.convenio);
-
-  if (errConvenio) {
-    console.error("Chamado concluído, mas falhou ao atualizar a senha do convênio:", errConvenio);
-  } else {
-    // atualiza cache e tela, caso o convênio concluído seja o que está selecionado
-    const idx = conveniosCache.findIndex(x => x.empresa === c.empresa && x.convenio === c.convenio);
-    if (idx !== -1) {
-      conveniosCache[idx].senha = c.nova_senha;
-      if (convenioAtual && convenioAtual.id === conveniosCache[idx].id) {
-        convenioAtual.senha = c.nova_senha;
-        atualizarExibicaoConvenio(convenioAtual);
-        preencherFormularioEdicao(convenioAtual);
-        setCopyState();
-      }
-    }
   }
 
   carregarChamados();
@@ -575,6 +839,7 @@ async function concluirChamado(c) {
 /* ================= LIMPEZA ================= */
 function limparDados() {
   convenioAtual = null;
+  acessosExtraAtual = [];
 
   document.getElementById("outEmpresa").textContent = "—";
   document.getElementById("outConvenio").textContent = "—";
@@ -593,6 +858,10 @@ function limparDados() {
   document.getElementById("btnChamado").disabled = true;
   document.getElementById("selectConvenio").disabled = true;
 
-  limparFormularioEdicao(); // esconde/zera formulário de edição do admin
-  setCopyState();           // esconde botões de copiar
+  const outros = document.getElementById("outrosAcessos");
+  if (outros) outros.hidden = true;
+
+  limparFormularioEdicao();
+  cancelarRevisao();
+  setCopyState();
 }
