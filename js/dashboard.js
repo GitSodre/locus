@@ -77,9 +77,11 @@ async function verificarPapel() {
 
 function aplicarVisibilidadeAdmin() {
   const painelEdicao = document.getElementById("painelEdicao");
+  const painelNovoConvenio = document.getElementById("painelNovoConvenio");
   const painelChamados = document.getElementById("painelChamados");
 
   if (painelEdicao) painelEdicao.hidden = !isAdmin;
+  if (painelNovoConvenio) painelNovoConvenio.hidden = !isAdmin;
   if (painelChamados) painelChamados.hidden = !isAdmin;
 
   if (isAdmin) carregarChamados();
@@ -245,6 +247,19 @@ function renderizarOutrosAcessosView() {
     if (a.link) card.appendChild(criarLinhaAcessoView("Link", a.link, true));
     if (a.login) card.appendChild(criarLinhaAcessoView("Login", a.login));
     if (a.senha) card.appendChild(criarLinhaAcessoView("Senha", a.senha));
+
+    const btnSolicitar = document.createElement("button");
+    btnSolicitar.type = "button";
+    btnSolicitar.className = "btn-verde btn-small btn-solicitar-extra";
+    btnSolicitar.textContent = "Solicitar alteração deste acesso";
+    btnSolicitar.onclick = () => abrirModalSolicitacao({
+      acessoId: a.id,
+      rotulo: a.rotulo || null,
+      login: a.login,
+      senha: a.senha,
+      link: a.link
+    });
+    card.appendChild(btnSolicitar);
 
     lista.appendChild(card);
   });
@@ -441,6 +456,7 @@ async function copyToClipboard(text) {
 function prepararPainelAdmin() {
   document.getElementById("btnSalvarConvenio")?.addEventListener("click", salvarConvenio);
   document.getElementById("btnCancelarRevisao")?.addEventListener("click", cancelarRevisao);
+  document.getElementById("btnCriarConvenio")?.addEventListener("click", criarConvenio);
 
   document.getElementById("btnAddAcesso")?.addEventListener("click", () => {
     acessosExtraAtual.push({ id: null, rotulo: "", link: "", login: "", senha: "", ordem: acessosExtraAtual.length, _removido: false });
@@ -448,10 +464,84 @@ function prepararPainelAdmin() {
   });
 }
 
+/* =====================================================
+   PAINEL ADMIN — CRIAR NOVO CONVÊNIO
+===================================================== */
+async function criarConvenio() {
+  const msg = document.getElementById("msgCriarConvenio");
+
+  const empresa    = document.getElementById("novoEmpresa").value.trim();
+  const convenio   = document.getElementById("novoConvenioNome").value.trim();
+  const rotulo     = document.getElementById("novoRotulo").value.trim();
+  const link       = document.getElementById("novoLink").value.trim();
+  const login      = document.getElementById("novoLogin").value.trim();
+  const senha      = document.getElementById("novoSenha").value.trim();
+  const observacao = document.getElementById("novoObservacao").value.trim();
+
+  if (!empresa || !convenio) {
+    msg.textContent = "Preencha ao menos Empresa e Convênio.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  const jaExiste = conveniosCache.some(c =>
+    c.empresa.toLowerCase() === empresa.toLowerCase() &&
+    c.convenio.toLowerCase() === convenio.toLowerCase()
+  );
+  if (jaExiste) {
+    msg.textContent = "Já existe um convênio com essa Empresa e Convênio. Edite o existente em vez de criar outro.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("convenios")
+    .insert({
+      empresa,
+      convenio,
+      rotulo: rotulo || null,
+      link: link || null,
+      login: login || null,
+      senha: senha || null,
+      observacao: observacao || null
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar convênio:", error);
+    msg.textContent = "Erro ao criar convênio.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  conveniosCache.push(data);
+
+  msg.classList.remove("erro");
+  msg.textContent = "Convênio criado com sucesso!";
+
+  ["novoEmpresa", "novoConvenioNome", "novoRotulo", "novoLink", "novoLogin", "novoSenha"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("novoObservacao").value = "";
+
+  // atualiza os selects e já abre o convênio recém-criado para conferência
+  carregarEmpresas();
+  const selectEmpresa = document.getElementById("selectEmpresa");
+  selectEmpresa.value = data.empresa;
+  carregarConvenios(data.empresa);
+  document.getElementById("selectConvenio").value = data.convenio;
+
+  cancelarRevisao();
+  selecionarConvenio(data);
+}
+
 function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
+  document.getElementById("editEmpresa").value = c.empresa || "";
+  document.getElementById("editConvenioNome").value = c.convenio || "";
   document.getElementById("editRotulo").value = c.rotulo || "";
   editLink.value = c.link || "";
   document.getElementById("editLogin").value = c.login || "";
@@ -467,6 +557,8 @@ function limparFormularioEdicao() {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
+  document.getElementById("editEmpresa").value = "";
+  document.getElementById("editConvenioNome").value = "";
   document.getElementById("editRotulo").value = "";
   editLink.value = "";
   document.getElementById("editLogin").value = "";
@@ -485,15 +577,42 @@ async function salvarConvenio() {
   if (!isAdmin || !convenioAtual) return;
 
   const msg = document.getElementById("msgSalvarConvenio");
+  const novaEmpresa = document.getElementById("editEmpresa").value.trim();
+  const novoConvenioNome = document.getElementById("editConvenioNome").value.trim();
   const novoRotulo = document.getElementById("editRotulo").value.trim();
   const novoLink  = document.getElementById("editLink").value.trim();
   const novoLogin = document.getElementById("editLogin").value.trim();
   const novaSenha = document.getElementById("editSenha").value.trim();
   const novaObs   = document.getElementById("editObservacao").value.trim();
 
+  if (!novaEmpresa || !novoConvenioNome) {
+    msg.textContent = "Empresa e Convênio não podem ficar em branco.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  const duplicado = conveniosCache.some(c =>
+    c.id !== convenioAtual.id &&
+    c.empresa.toLowerCase() === novaEmpresa.toLowerCase() &&
+    c.convenio.toLowerCase() === novoConvenioNome.toLowerCase()
+  );
+  if (duplicado) {
+    msg.textContent = "Já existe outro convênio com essa combinação de Empresa e Convênio.";
+    msg.classList.add("erro");
+    return;
+  }
+
   const { error } = await supabaseClient
     .from("convenios")
-    .update({ rotulo: novoRotulo, link: novoLink, login: novoLogin, senha: novaSenha, observacao: novaObs })
+    .update({
+      empresa: novaEmpresa,
+      convenio: novoConvenioNome,
+      rotulo: novoRotulo,
+      link: novoLink,
+      login: novoLogin,
+      senha: novaSenha,
+      observacao: novaObs
+    })
     .eq("id", convenioAtual.id);
 
   if (error) {
@@ -503,6 +622,8 @@ async function salvarConvenio() {
     return;
   }
 
+  convenioAtual.empresa = novaEmpresa;
+  convenioAtual.convenio = novoConvenioNome;
   convenioAtual.rotulo = novoRotulo;
   convenioAtual.link = novoLink;
   convenioAtual.login = novoLogin;
@@ -514,8 +635,17 @@ async function salvarConvenio() {
 
   await salvarAcessosExtra(convenioAtual.id);
 
+  document.getElementById("outEmpresa").textContent = novaEmpresa;
+  document.getElementById("outConvenio").textContent = novoConvenioNome;
   atualizarExibicaoConvenio(convenioAtual);
   setCopyState();
+
+  // atualiza os selects (empresa/convênio podem ter sido renomeados)
+  carregarEmpresas();
+  const selectEmpresa = document.getElementById("selectEmpresa");
+  selectEmpresa.value = novaEmpresa;
+  carregarConvenios(novaEmpresa);
+  document.getElementById("selectConvenio").value = novoConvenioNome;
 
   msg.classList.remove("erro");
   msg.textContent = "Alterações salvas com sucesso.";
@@ -534,7 +664,42 @@ async function salvarConvenio() {
 
 /* =====================================================
    MODAL — SOLICITAR ALTERAÇÃO DE ACESSO (usuário normal)
+   Serve tanto para o acesso principal quanto para os adicionais.
 ===================================================== */
+let contextoSolicitacao = null; // { acessoId: null|id, rotulo, login, senha, link }
+
+function abrirModalSolicitacao(contexto) {
+  if (!convenioAtual) return;
+  contextoSolicitacao = contexto;
+
+  document.getElementById("modalEmpresa").textContent = convenioAtual.empresa;
+  document.getElementById("modalConvenio").textContent = convenioAtual.convenio;
+
+  const tituloAcesso = document.getElementById("modalAcessoTitulo");
+  if (tituloAcesso) {
+    tituloAcesso.textContent = contexto.rotulo ? `Acesso: ${contexto.rotulo}` : "Acesso principal";
+  }
+
+  document.getElementById("modalLoginAtual").textContent = safeText(contexto.login);
+  document.getElementById("modalSenhaAtual").textContent = safeText(contexto.senha);
+  document.getElementById("modalLinkAtual").textContent = safeText(contexto.link);
+
+  ["chkAlterarLogin", "chkAlterarSenha", "chkAlterarLink"].forEach(id => {
+    document.getElementById(id).checked = false;
+  });
+  ["modalNovoLogin", "modalNovaSenha", "modalNovoLink"].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = "";
+    el.disabled = true;
+  });
+
+  const msg = document.getElementById("msgModalChamado");
+  msg.textContent = "";
+  msg.classList.remove("erro");
+
+  document.getElementById("modalChamado").hidden = false;
+}
+
 function prepararModalChamado() {
   const btnChamado = document.getElementById("btnChamado");
   const modal = document.getElementById("modalChamado");
@@ -549,34 +714,19 @@ function prepararModalChamado() {
 
   btnChamado.addEventListener("click", () => {
     if (!convenioAtual) return;
-
-    document.getElementById("modalEmpresa").textContent = convenioAtual.empresa;
-    document.getElementById("modalConvenio").textContent = convenioAtual.convenio;
-
-    document.getElementById("modalLoginAtual").textContent = safeText(convenioAtual.login);
-    document.getElementById("modalSenhaAtual").textContent = safeText(convenioAtual.senha);
-    document.getElementById("modalLinkAtual").textContent = safeText(convenioAtual.link);
-
-    ["chkAlterarLogin", "chkAlterarSenha", "chkAlterarLink"].forEach(id => {
-      document.getElementById(id).checked = false;
+    abrirModalSolicitacao({
+      acessoId: null,
+      rotulo: convenioAtual.rotulo || null,
+      login: convenioAtual.login,
+      senha: convenioAtual.senha,
+      link: convenioAtual.link
     });
-    ["modalNovoLogin", "modalNovaSenha", "modalNovoLink"].forEach(id => {
-      const el = document.getElementById(id);
-      el.value = "";
-      el.disabled = true;
-    });
-
-    const msg = document.getElementById("msgModalChamado");
-    msg.textContent = "";
-    msg.classList.remove("erro");
-
-    modal.hidden = false;
   });
 
   btnCancelar?.addEventListener("click", () => { modal.hidden = true; });
 
   btnConfirmar?.addEventListener("click", async () => {
-    if (!convenioAtual) return;
+    if (!convenioAtual || !contextoSolicitacao) return;
 
     const alterarLogin = document.getElementById("chkAlterarLogin").checked;
     const alterarSenha = document.getElementById("chkAlterarSenha").checked;
@@ -605,7 +755,9 @@ function prepararModalChamado() {
       empresa: convenioAtual.empresa,
       convenio: convenioAtual.convenio,
       convenio_id: convenioAtual.id,
-      login: convenioAtual.login,
+      acesso_id: contextoSolicitacao.acessoId,
+      acesso_rotulo: contextoSolicitacao.rotulo,
+      login: contextoSolicitacao.login,
       novo_login: alterarLogin ? novoLogin : null,
       nova_senha: alterarSenha ? novaSenha : null,
       novo_link: alterarLink ? novoLink : null,
@@ -652,10 +804,28 @@ async function carregarChamados() {
     return;
   }
 
-  renderizarChamados(data || []);
+  const chamados = data || [];
+
+  const idsAcesso = [...new Set(chamados.filter(c => c.acesso_id).map(c => c.acesso_id))];
+  let acessosMap = {};
+
+  if (idsAcesso.length > 0) {
+    const { data: acessosData, error: errAcessos } = await supabaseClient
+      .from("convenio_acessos")
+      .select("*")
+      .in("id", idsAcesso);
+
+    if (errAcessos) {
+      console.error("Erro ao carregar acessos referenciados pelos chamados:", errAcessos);
+    } else {
+      (acessosData || []).forEach(a => { acessosMap[a.id] = a; });
+    }
+  }
+
+  renderizarChamados(chamados, acessosMap);
 }
 
-function renderizarChamados(chamados) {
+function renderizarChamados(chamados, acessosMap) {
   const lista = document.getElementById("listaChamados");
   const badge = document.getElementById("badgeChamados");
   if (!lista) return;
@@ -679,16 +849,22 @@ function renderizarChamados(chamados) {
     const convenioRef = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
       || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
+    const referencia = c.acesso_id ? acessosMap[c.acesso_id] : convenioRef;
+    const tituloAcesso = c.acesso_id
+      ? `Acesso: ${c.acesso_rotulo || "adicional"}`
+      : (convenioRef?.rotulo ? `Acesso: ${convenioRef.rotulo}` : "Acesso principal");
+
     const item = document.createElement("div");
     item.className = "chamado-item";
 
     const info = document.createElement("div");
     info.className = "chamado-info";
 
-    const diff = montarDiffChamado(c, convenioRef);
+    const diff = montarDiffChamado(c, referencia);
 
     info.innerHTML = `
       <p><strong>${escapeHtml(c.usuario_nome || c.usuario)}</strong> — ${escapeHtml(c.empresa)} / ${escapeHtml(c.convenio)}</p>
+      <p class="chamado-acesso-titulo">${escapeHtml(tituloAcesso)}</p>
       <p class="chamado-diff">${diff || "Nenhuma alteração especificada."}</p>
       <p class="chamado-data">Aberto em: ${formatarData(c.data_abertura)}</p>
     `;
@@ -773,9 +949,21 @@ function revisarChamado(c) {
   selectConvenio.value = convenio.convenio;
 
   selecionarConvenio(convenio).then(() => {
-    if (c.novo_login) document.getElementById("editLogin").value = c.novo_login;
-    if (c.nova_senha) document.getElementById("editSenha").value = c.nova_senha;
-    if (c.novo_link)  document.getElementById("editLink").value = c.novo_link;
+    if (c.acesso_id) {
+      const linha = acessosExtraAtual.find(a => a.id === c.acesso_id);
+      if (!linha) {
+        alert("O acesso adicional referenciado por este chamado não existe mais. Revise manualmente na seção de acessos adicionais.");
+        return;
+      }
+      if (c.novo_login) linha.login = c.novo_login;
+      if (c.nova_senha) linha.senha = c.nova_senha;
+      if (c.novo_link)  linha.link = c.novo_link;
+      renderizarAcessosExtraForm();
+    } else {
+      if (c.novo_login) document.getElementById("editLogin").value = c.novo_login;
+      if (c.nova_senha) document.getElementById("editSenha").value = c.nova_senha;
+      if (c.novo_link)  document.getElementById("editLink").value = c.novo_link;
+    }
 
     chamadoEmRevisao = c.id;
     mostrarAvisoRevisao(c);
@@ -803,32 +991,56 @@ async function concluirChamado(c) {
   const payload = {};
   if (c.novo_login) payload.login = c.novo_login;
   if (c.nova_senha) payload.senha = c.nova_senha;
-  if (c.novo_link)  payload.link = c.novo_link.startsWith("http") ? c.novo_link : "https://" + c.novo_link;
+  if (c.novo_link)  payload.link = normalizarLink(c.novo_link);
 
   if (Object.keys(payload).length > 0) {
-    let query = supabaseClient.from("convenios").update(payload);
-    query = c.convenio_id ? query.eq("id", c.convenio_id) : query.eq("empresa", c.empresa).eq("convenio", c.convenio);
-    const { error: errConvenio } = await query;
+    if (c.acesso_id) {
+      // acesso adicional: atualiza direto em convenio_acessos
+      const { error: errAcesso } = await supabaseClient
+        .from("convenio_acessos")
+        .update(payload)
+        .eq("id", c.acesso_id);
 
-    if (errConvenio) {
-      console.error("Erro ao aplicar alterações no convênio:", errConvenio);
-      alert("Não foi possível aplicar as alterações no convênio.");
-      return;
-    }
+      if (errAcesso) {
+        console.error("Erro ao aplicar alterações no acesso adicional:", errAcesso);
+        alert("Não foi possível aplicar as alterações neste acesso adicional.");
+        return;
+      }
 
-    const idx = conveniosCache.findIndex(x => (c.convenio_id && x.id === c.convenio_id) || (x.empresa === c.empresa && x.convenio === c.convenio));
-    if (idx !== -1) {
-      Object.assign(conveniosCache[idx], payload);
-      if (convenioAtual && convenioAtual.id === conveniosCache[idx].id) {
-        Object.assign(convenioAtual, payload);
-        atualizarExibicaoConvenio(convenioAtual);
-        if (isAdmin) preencherFormularioEdicao(convenioAtual);
-        setCopyState();
+      // se o convênio dono desse acesso é o que está aberto na tela, recarrega a exibição
+      if (convenioAtual && c.convenio_id === convenioAtual.id) {
+        await carregarAcessosExtra(convenioAtual.id);
+      }
+    } else {
+      // acesso principal: atualiza em convenios
+      let query = supabaseClient.from("convenios").update(payload);
+      query = c.convenio_id ? query.eq("id", c.convenio_id) : query.eq("empresa", c.empresa).eq("convenio", c.convenio);
+      const { error: errConvenio } = await query;
+
+      if (errConvenio) {
+        console.error("Erro ao aplicar alterações no convênio:", errConvenio);
+        alert("Não foi possível aplicar as alterações no convênio.");
+        return;
+      }
+
+      const idx = conveniosCache.findIndex(x => (c.convenio_id && x.id === c.convenio_id) || (x.empresa === c.empresa && x.convenio === c.convenio));
+      if (idx !== -1) {
+        Object.assign(conveniosCache[idx], payload);
+        if (convenioAtual && convenioAtual.id === conveniosCache[idx].id) {
+          Object.assign(convenioAtual, payload);
+          atualizarExibicaoConvenio(convenioAtual);
+          if (isAdmin) preencherFormularioEdicao(convenioAtual);
+          setCopyState();
+        }
       }
     }
   }
 
   await concluirChamadoPorId(c.id);
+}
+
+function normalizarLink(link) {
+  return link.startsWith("http") ? link : "https://" + link;
 }
 
 async function concluirChamadoPorId(id) {
