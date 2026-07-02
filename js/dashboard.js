@@ -968,7 +968,9 @@ function revisarChamado(c) {
     chamadoEmRevisao = c.id;
     mostrarAvisoRevisao(c);
 
-    document.getElementById("painelEdicao").scrollIntoView({ behavior: "smooth", block: "start" });
+    const painelEdicao = document.getElementById("painelEdicao");
+    painelEdicao.open = true;
+    painelEdicao.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
