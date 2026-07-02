@@ -89,9 +89,11 @@
          PAINEL ADMIN — EDIÇÃO DO CONVÊNIO SELECIONADO
          Visível apenas para usuários com tipo = 'admin'
     ============================================================= -->
-    <div id="painelEdicao" class="painel-admin" hidden>
+    <details id="painelEdicao" class="painel-admin" hidden>
       <hr>
-      <h2>Painel Admin — Editar convênio</h2>
+      <summary>
+        <h2>Painel Admin — Editar convênio</h2>
+      </summary>
       <p class="painel-aviso">Selecione uma empresa e um convênio acima para editar os dados abaixo.</p>
 
       <!-- Aviso mostrado quando o formulário foi preenchido a partir de um chamado -->
@@ -152,7 +154,7 @@
         <button id="btnSalvarConvenio" class="btn-verde" disabled>Salvar alterações</button>
       </div>
       <p id="msgSalvarConvenio" class="msg-feedback"></p>
-    </div>
+    </details>
 
     <!-- ============================================================
          PAINEL ADMIN — CRIAR NOVO CONVÊNIO (recolhível)
