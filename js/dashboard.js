@@ -1,14 +1,16 @@
 /*********************************
- * DASHBOARD.JS – FINAL E ESTÁVEL + COPIAR + SHOW/HIDE
+ * DASHBOARD.JS – com permissões admin/usuário
  *********************************/
 
-// logout global
 window.logout = async function () {
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 };
 
 let conveniosCache = [];
+let usuarioAtualEmail = null;
+let isAdmin = false;
+let convenioSelecionado = null;
 
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
@@ -20,12 +22,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  limparDados();            // estado inicial
-  prepararBotoesDeCopia();  // listeners (uma única vez)
+  usuarioAtualEmail = sessionData.session.user.email;
+  await checarPermissaoAdmin();
 
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("*");
+  limparDados();
+  prepararBotoesDeCopia();
+  prepararModalSolicitacao();
+  prepararEdicaoAdmin();
+
+  const { data, error } = await supabaseClient.from("convenios").select("*");
 
   if (error) {
     console.error("Erro ao carregar convênios:", error);
@@ -36,7 +41,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   conveniosCache = data || [];
   carregarEmpresas();
+
+  if (isAdmin) {
+    document.getElementById("adminSection").hidden = false;
+    carregarChamadosAbertos();
+  }
 });
+
+/* ================= PERMISSÃO ================= */
+async function checarPermissaoAdmin() {
+  const { data, error } = await supabaseClient
+    .from("usuarios")
+    .select("tipo")
+    .eq("email", usuarioAtualEmail)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Erro ao checar permissão:", error);
+    isAdmin = false;
+    return;
+  }
+  isAdmin = data?.tipo === "admin";
+}
 
 /* ================= EMPRESAS ================= */
 function carregarEmpresas() {
@@ -68,7 +94,7 @@ function carregarConvenios(empresa) {
   selectConvenio.disabled = !empresa;
 
   if (!empresa) {
-    setCopyState(); // garante botões ocultos
+    setCopyState();
     return;
   }
 
@@ -86,46 +112,48 @@ function carregarConvenios(empresa) {
 
   selectConvenio.onchange = () => {
     const selecionado = selectConvenio.value;
-    const c = conveniosCache.find(
-      x => x.empresa === empresa && x.convenio === selecionado
-    );
+    const c = conveniosCache.find(x => x.empresa === empresa && x.convenio === selecionado);
 
     if (!c) {
+      convenioSelecionado = null;
       limparDados();
       return;
     }
 
-    // Preenche campos
-    document.getElementById("outConvenio").textContent = c.convenio;
+    convenioSelecionado = c;
+    preencherCampos(c);
 
-    // LINK
-    const linkEl = document.getElementById("outLink");
-    if (c.link && c.link.trim() !== "") {
-      const url = c.link.startsWith("http") ? c.link : "https://" + c.link;
-      linkEl.href = url;
-      linkEl.target = "_blank";
-      linkEl.rel = "noopener noreferrer";
-      linkEl.textContent = url;
-      linkEl.removeAttribute("aria-disabled");
-      linkEl.classList.remove("link-desabilitado");
-    } else {
-      linkEl.textContent = "—";
-      linkEl.removeAttribute("href");
-      linkEl.removeAttribute("target");
-      linkEl.setAttribute("aria-disabled", "true");
-      linkEl.classList.add("link-desabilitado");
-    }
-
-    document.getElementById("outLogin").textContent = safeText(c.login);
-    document.getElementById("outSenha").textContent = safeText(c.senha);
-    document.getElementById("outObservacao").textContent = safeText(c.observacao);
-
-    // Ativa ação
     document.getElementById("btnChamado").disabled = false;
+    const btnEditar = document.getElementById("btnEditarConvenio");
+    if (btnEditar) btnEditar.disabled = false;
 
-    // 🔁 Atualiza visibilidade dos botões de copiar
     setCopyState();
   };
+}
+
+function preencherCampos(c) {
+  document.getElementById("outConvenio").textContent = c.convenio;
+
+  const linkEl = document.getElementById("outLink");
+  if (c.link && c.link.trim() !== "") {
+    const url = c.link.startsWith("http") ? c.link : "https://" + c.link;
+    linkEl.href = url;
+    linkEl.target = "_blank";
+    linkEl.rel = "noopener noreferrer";
+    linkEl.textContent = url;
+    linkEl.removeAttribute("aria-disabled");
+    linkEl.classList.remove("link-desabilitado");
+  } else {
+    linkEl.textContent = "—";
+    linkEl.removeAttribute("href");
+    linkEl.removeAttribute("target");
+    linkEl.setAttribute("aria-disabled", "true");
+    linkEl.classList.add("link-desabilitado");
+  }
+
+  document.getElementById("outLogin").textContent = safeText(c.login);
+  document.getElementById("outSenha").textContent = safeText(c.senha);
+  document.getElementById("outObservacao").textContent = safeText(c.observacao);
 }
 
 /* ================= COPIAR ================= */
@@ -139,7 +167,6 @@ function prepararBotoesDeCopia() {
   if (btnCopySenha) btnCopySenha.addEventListener("click", async () => { await copyToClipboard(getTextFrom("outSenha")); });
 }
 
-// Mostra/oculta + habilita/desabilita de forma robusta
 function setCopyState() {
   toggleCopyVisibility("copyLink",  !!getValueForCopyLink());
   toggleCopyVisibility("copyLogin", !!getTextFrom("outLogin"));
@@ -149,15 +176,14 @@ function setCopyState() {
 function toggleCopyVisibility(btnId, show) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
-
   if (show) {
     btn.disabled = false;
-    btn.removeAttribute("hidden");        // remove atributo
-    btn.style.display = "inline-block";   // garante exibição
+    btn.removeAttribute("hidden");
+    btn.style.display = "inline-block";
   } else {
     btn.disabled = true;
-    btn.setAttribute("hidden", "");       // atributo HTML hidden
-    btn.style.display = "none";           // reforço
+    btn.setAttribute("hidden", "");
+    btn.style.display = "none";
   }
 }
 
@@ -171,7 +197,6 @@ function getValueForCopyLink() {
 function getTextFrom(id) {
   const el = document.getElementById(id);
   const t = (el?.textContent || "").trim();
-  // só considera válido se não for vazio e não for o marcador "—"
   return (t && t !== "—") ? t : "";
 }
 
@@ -185,7 +210,6 @@ async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (e) {
-    // Fallback para ambientes sem permissão/HTTPS
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -200,6 +224,184 @@ async function copyToClipboard(text) {
       console.error("Falha ao copiar:", err);
     }
   }
+}
+
+/* ================= MODAL: SOLICITAR ALTERAÇÃO (usuário comum) ================= */
+function prepararModalSolicitacao() {
+  const btnChamado = document.getElementById("btnChamado");
+  const modal = document.getElementById("modalSolicitacao");
+  const btnCancelar = document.getElementById("modalCancelar");
+  const btnEnviar = document.getElementById("modalEnviar");
+
+  btnChamado.addEventListener("click", () => {
+    if (!convenioSelecionado) return;
+    document.getElementById("modalLoginAtual").textContent = safeText(convenioSelecionado.login);
+    document.getElementById("modalNovoLogin").value = "";
+    document.getElementById("modalNovaSenha").value = "";
+    modal.hidden = false;
+  });
+
+  btnCancelar.addEventListener("click", () => { modal.hidden = true; });
+
+  btnEnviar.addEventListener("click", async () => {
+    if (!convenioSelecionado) return;
+
+    const novoLogin = document.getElementById("modalNovoLogin").value.trim();
+    const novaSenha = document.getElementById("modalNovaSenha").value.trim();
+
+    if (!novoLogin && !novaSenha) {
+      alert("Preencha ao menos um dos campos (login ou senha).");
+      return;
+    }
+
+    const { error } = await supabaseClient.from("chamados").insert({
+      usuario: usuarioAtualEmail,
+      usuario_nome: usuarioAtualEmail,
+      empresa: convenioSelecionado.empresa,
+      convenio: convenioSelecionado.convenio,
+      login: novoLogin || null,
+      nova_senha: novaSenha || null,
+      status: "aberto"
+    });
+
+    if (error) {
+      console.error("Erro ao abrir chamado:", error);
+      alert("Não foi possível enviar a solicitação.");
+      return;
+    }
+
+    alert("Solicitação enviada com sucesso!");
+    modal.hidden = true;
+
+    if (isAdmin) carregarChamadosAbertos();
+  });
+}
+
+/* ================= EDIÇÃO (só admin) ================= */
+function prepararEdicaoAdmin() {
+  if (!isAdmin) return;
+
+  const btnEditar = document.getElementById("btnEditarConvenio");
+  const btnSalvar = document.getElementById("btnSalvarConvenio");
+  const btnCancelarEdicao = document.getElementById("btnCancelarEdicao");
+
+  btnEditar.addEventListener("click", () => {
+    if (!convenioSelecionado) return;
+    document.getElementById("editLink").value = convenioSelecionado.link || "";
+    document.getElementById("editLogin").value = convenioSelecionado.login || "";
+    document.getElementById("editSenha").value = convenioSelecionado.senha || "";
+    document.getElementById("editObservacao").value = convenioSelecionado.observacao || "";
+    ativarModoEdicao(true);
+  });
+
+  btnCancelarEdicao.addEventListener("click", () => {
+    ativarModoEdicao(false);
+  });
+
+  btnSalvar.addEventListener("click", async () => {
+    if (!convenioSelecionado) return;
+
+    const atualizacao = {
+      link: document.getElementById("editLink").value.trim(),
+      login: document.getElementById("editLogin").value.trim(),
+      senha: document.getElementById("editSenha").value.trim(),
+      observacao: document.getElementById("editObservacao").value.trim()
+    };
+
+    const { error } = await supabaseClient
+      .from("convenios")
+      .update(atualizacao)
+      .eq("id", convenioSelecionado.id);
+
+    if (error) {
+      console.error("Erro ao salvar convênio:", error);
+      alert("Não foi possível salvar as alterações.");
+      return;
+    }
+
+    Object.assign(convenioSelecionado, atualizacao);
+    const idx = conveniosCache.findIndex(c => c.id === convenioSelecionado.id);
+    if (idx >= 0) conveniosCache[idx] = convenioSelecionado;
+
+    preencherCampos(convenioSelecionado);
+    ativarModoEdicao(false);
+    setCopyState();
+    alert("Convênio atualizado com sucesso!");
+  });
+}
+
+function ativarModoEdicao(ligado) {
+  document.getElementById("visualizacaoConvenio").hidden = ligado;
+  document.getElementById("edicaoConvenio").hidden = !ligado;
+}
+
+/* ================= CHAMADOS (só admin) ================= */
+async function carregarChamadosAbertos() {
+  const { data, error } = await supabaseClient
+    .from("chamados")
+    .select("*")
+    .eq("status", "aberto")
+    .order("data_abertura", { ascending: false });
+
+  if (error) {
+    console.error("Erro ao carregar chamados:", error);
+    return;
+  }
+  renderizarChamados(data || []);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+function renderizarChamados(chamados) {
+  const container = document.getElementById("chamadosContainer");
+  container.innerHTML = "";
+
+  if (chamados.length === 0) {
+    container.innerHTML = "<p>Nenhum chamado em aberto.</p>";
+    return;
+  }
+
+  chamados.forEach(ch => {
+    const item = document.createElement("div");
+    item.className = "chamado-item";
+    item.innerHTML = `
+      <p><strong>Usuário:</strong> ${escapeHtml(ch.usuario_nome || ch.usuario)}</p>
+      <p><strong>Empresa:</strong> ${escapeHtml(ch.empresa)} — <strong>Convênio:</strong> ${escapeHtml(ch.convenio)}</p>
+      <p><strong>Novo login:</strong> ${escapeHtml(ch.login) || "—"}</p>
+      <p><strong>Nova senha:</strong> ${escapeHtml(ch.nova_senha) || "—"}</p>
+      <p><strong>Aberto em:</strong> ${new Date(ch.data_abertura).toLocaleString("pt-BR")}</p>
+      <button class="btn-verde btn-dar-baixa" data-id="${ch.id}">Dar baixa</button>
+    `;
+    container.appendChild(item);
+  });
+
+  container.querySelectorAll(".btn-dar-baixa").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await darBaixaChamado(btn.dataset.id);
+    });
+  });
+}
+
+async function darBaixaChamado(id) {
+  const { error } = await supabaseClient
+    .from("chamados")
+    .update({
+      status: "concluido",
+      data_conclusao: new Date().toISOString(),
+      admin_concluiu_email: usuarioAtualEmail
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Erro ao dar baixa:", error);
+    alert("Não foi possível concluir o chamado.");
+    return;
+  }
+  carregarChamadosAbertos();
 }
 
 /* ================= LIMPEZA ================= */
@@ -221,5 +423,14 @@ function limparDados() {
   document.getElementById("btnChamado").disabled = true;
   document.getElementById("selectConvenio").disabled = true;
 
-  setCopyState(); // esconde botões de copiar
+  const btnEditar = document.getElementById("btnEditarConvenio");
+  if (btnEditar) btnEditar.disabled = true;
+
+  const view = document.getElementById("visualizacaoConvenio");
+  const edit = document.getElementById("edicaoConvenio");
+  if (view) view.hidden = false;
+  if (edit) edit.hidden = true;
+
+  convenioSelecionado = null;
+  setCopyState();
 }
