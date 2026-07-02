@@ -10,8 +10,16 @@
 
   <div class="dashboard-container">
 
-    <h2>Consulta de convênios</h2>
-
+    <div class="top">
+      <h1 class="tituloden">Locus.</h1>
+      <button class="btn-vermelhotop" onclick="logout()">Sair</button>
+      <button class="pai-admin" id="btnPainelAdmin" onclick="toggleAdminPanels()" hidden>
+        Painel Admin
+      </button>
+    </div>
+    
+    <H2>Consulta de convênios</H2>
+      
     <div class="filtros-linha">
       <div class="filtro">
         <label>Empresa</label>
@@ -38,20 +46,43 @@
         <strong>Link:</strong>
         <!-- Sem href por padrão; JS ativa quando houver URL -->
         <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
-        <!-- aparece só quando houver link -->
-        <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>📋</button>
+        <!-- Botão copiar (aparece só quando houver link) -->
+        <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>
+          <!-- Heroicons (outline) -->
+          <svg xmlns="http://www.w3.org/2000/svg"
+               viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round"
+               class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
       </p>
 
       <p>
         <strong>Login:</strong> <span id="outLogin">—</span>
-        <!-- aparece só quando houver login -->
-        <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>📋</button>
+        <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg"
+               viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round"
+               class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
       </p>
 
       <p>
         <strong>Senha:</strong> <span id="outSenha">—</span>
-        <!-- aparece só quando houver senha -->
-        <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>📋</button>
+        <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg"
+               viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5"
+               stroke-linecap="round" stroke-linejoin="round"
+               class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
       </p>
 
       <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
@@ -61,9 +92,80 @@
       <button id="btnChamado" class="btn-verde" disabled>
         Solicitar alteração de senha
       </button>
-      <button class="btn-vermelho" onclick="logout()">Sair</button>
     </div>
 
+    <!-- ============================================================
+         PAINEL ADMIN — EDIÇÃO DO CONVÊNIO SELECIONADO
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <div id="painelEdicao" class="painel-admin" hidden>
+      <hr>
+      <h2>Painel Admin — Editar convênio</h2>
+      <p class="painel-aviso">Selecione uma empresa e um convênio acima para editar os dados abaixo.</p>
+
+      <div class="form-grid">
+        <div class="campo">
+          <label for="editLink">Link</label>
+          <input type="text" id="editLink" placeholder="https://...">
+        </div>
+
+        <div class="campo">
+          <label for="editLogin">Login</label>
+          <input type="text" id="editLogin" placeholder="Login de acesso">
+        </div>
+
+        <div class="campo">
+          <label for="editSenha">Senha</label>
+          <input type="text" id="editSenha" placeholder="Senha de acesso">
+        </div>
+
+        <div class="campo campo-full">
+          <label for="editObservacao">Observação</label>
+          <textarea id="editObservacao" rows="3" placeholder="Observações"></textarea>
+        </div>
+      </div>
+
+      <div class="caixa_botoes">
+        <button id="btnSalvarConvenio" class="btn-verde" disabled>Salvar alterações</button>
+      </div>
+      <p id="msgSalvarConvenio" class="msg-feedback"></p>
+    </div>
+
+    <!-- ============================================================
+         PAINEL ADMIN — CHAMADOS DE ALTERAÇÃO DE SENHA
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <div id="painelChamados" class="painel-admin" hidden>
+      <hr>
+      <h2>Chamados de alteração de senha <span id="badgeChamados" class="badge" hidden>0</span></h2>
+
+      <div id="listaChamados" class="lista-chamados">
+        <p class="painel-aviso">Nenhum chamado no momento.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       MODAL — SOLICITAR ALTERAÇÃO DE SENHA (usuários normais)
+  ============================================================= -->
+  <div id="modalChamado" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>Solicitar alteração de senha</h2>
+      <p class="painel-aviso">
+        Empresa: <strong id="modalEmpresa">—</strong><br>
+        Convênio: <strong id="modalConvenio">—</strong>
+      </p>
+
+      <label for="modalNovaSenha">Nova senha desejada</label>
+      <input type="text" id="modalNovaSenha" placeholder="Digite a nova senha">
+
+      <div class="modal-botoes">
+        <button id="btnCancelarChamado" class="btn-vermelho">Cancelar</button>
+        <button id="btnConfirmarChamado" class="btn-verde">Enviar solicitação</button>
+      </div>
+      <p id="msgModalChamado" class="msg-feedback"></p>
+    </div>
   </div>
 
   <!-- LIBS -->
