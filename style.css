@@ -1,9 +1,81 @@
-/* ===== Estrutura base (mantenha o que você já tinha aqui em cima) ===== */
+* {
+  box-sizing: border-box;
+}
 
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background: #f4f6f8;
   margin: 0;
+  color: #222;
+}
+
+/* ===== LOGIN ===== */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.login-card {
+  background: #fff;
+  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.1);
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-card h1 {
+  text-align: center;
+  margin: 0 0 8px;
+  color: #2e7d32;
+}
+
+.login-card input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  width: 100%;
+}
+
+.senha-wrapper {
+  position: relative;
+}
+
+.senha-wrapper input {
+  padding-right: 36px;
+}
+
+.olho {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-card button {
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.login-card button:hover {
+  background: #256428;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard-page {
+  padding: 20px;
 }
 
 .dashboard-container {
@@ -13,6 +85,11 @@ body {
   padding: 24px;
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+.dashboard-container h2 {
+  margin-top: 0;
+  color: #2e7d32;
 }
 
 .filtros-linha {
@@ -25,6 +102,13 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.filtro label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
 }
 
 .filtro select {
@@ -63,6 +147,11 @@ body {
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-verde:hover:not(:disabled) {
+  background: #256428;
 }
 
 .btn-verde:disabled {
@@ -77,13 +166,24 @@ body {
   padding: 10px 16px;
   border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
 }
 
-/* ===== NOVO: edição admin ===== */
+.btn-vermelho:hover {
+  background: #a02020;
+}
+
+/* ===== EDIÇÃO ADMIN ===== */
 #edicaoConvenio {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+#edicaoConvenio label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #555;
 }
 
 #edicaoConvenio input,
@@ -92,12 +192,16 @@ body {
   border-radius: 6px;
   border: 1px solid #ccc;
   width: 100%;
-  box-sizing: border-box;
+  font-family: inherit;
 }
 
-/* ===== NOVO: área admin / chamados ===== */
+/* ===== ÁREA ADMIN / CHAMADOS ===== */
 #adminSection {
   margin-top: 24px;
+}
+
+#adminSection h2 {
+  color: #2e7d32;
 }
 
 .chamado-item {
@@ -110,9 +214,14 @@ body {
 
 .chamado-item p {
   margin: 4px 0;
+  font-size: 14px;
 }
 
-/* ===== NOVO: modal de solicitação ===== */
+.btn-dar-baixa {
+  margin-top: 8px;
+}
+
+/* ===== MODAL ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -131,6 +240,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.modal-box h3 {
+  margin-top: 0;
+  color: #2e7d32;
 }
 
 .modal-box input {
