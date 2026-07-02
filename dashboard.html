@@ -102,6 +102,16 @@
       </p>
 
       <div class="form-grid">
+        <div class="campo">
+          <label for="editEmpresa">Empresa</label>
+          <input type="text" id="editEmpresa" placeholder="Nome da empresa">
+        </div>
+
+        <div class="campo">
+          <label for="editConvenioNome">Convênio</label>
+          <input type="text" id="editConvenioNome" placeholder="Nome do convênio">
+        </div>
+
         <div class="campo campo-full">
           <label for="editRotulo">Rótulo deste acesso (opcional)</label>
           <input type="text" id="editRotulo" placeholder="Ex: Portal principal, Acesso web...">
@@ -145,6 +155,59 @@
     </div>
 
     <!-- ============================================================
+         PAINEL ADMIN — CRIAR NOVO CONVÊNIO (recolhível)
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelNovoConvenio" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Painel Admin — Criar novo convênio</h2>
+      </summary>
+
+      <div class="form-grid">
+        <div class="campo">
+          <label for="novoEmpresa">Empresa</label>
+          <input type="text" id="novoEmpresa" placeholder="Nome da empresa">
+        </div>
+
+        <div class="campo">
+          <label for="novoConvenioNome">Convênio</label>
+          <input type="text" id="novoConvenioNome" placeholder="Nome do convênio">
+        </div>
+
+        <div class="campo campo-full">
+          <label for="novoRotulo">Rótulo deste acesso (opcional)</label>
+          <input type="text" id="novoRotulo" placeholder="Ex: Portal principal, Acesso web...">
+        </div>
+
+        <div class="campo">
+          <label for="novoLink">Link</label>
+          <input type="text" id="novoLink" placeholder="https://...">
+        </div>
+
+        <div class="campo">
+          <label for="novoLogin">Login</label>
+          <input type="text" id="novoLogin" placeholder="Login de acesso">
+        </div>
+
+        <div class="campo">
+          <label for="novoSenha">Senha</label>
+          <input type="text" id="novoSenha" placeholder="Senha de acesso">
+        </div>
+
+        <div class="campo campo-full">
+          <label for="novoObservacao">Observação</label>
+          <textarea id="novoObservacao" rows="3" placeholder="Observações"></textarea>
+        </div>
+      </div>
+
+      <div class="caixa_botoes">
+        <button id="btnCriarConvenio" class="btn-verde">Criar convênio</button>
+      </div>
+      <p id="msgCriarConvenio" class="msg-feedback"></p>
+    </details>
+
+    <!-- ============================================================
          PAINEL ADMIN — CHAMADOS (recolhível)
          Visível apenas para usuários com tipo = 'admin'
     ============================================================= -->
@@ -169,7 +232,8 @@
       <h2>Solicitar alteração de acesso</h2>
       <p class="painel-aviso">
         Empresa: <strong id="modalEmpresa">—</strong><br>
-        Convênio: <strong id="modalConvenio">—</strong>
+        Convênio: <strong id="modalConvenio">—</strong><br>
+        <span id="modalAcessoTitulo">Acesso principal</span>
       </p>
       <p class="painel-aviso">
         Marque somente os campos que deseja alterar. O que ficar desmarcado continua com o valor atual.
