@@ -32,3 +32,4 @@ document.getElementById("btnEntrar").addEventListener("click", async () => {
 
   window.location.href = "dashboard.html";
 });
+``
