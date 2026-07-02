@@ -106,7 +106,7 @@
       <div class="form-grid">
         <div class="campo">
           <label for="editEmpresa">Empresa</label>
-          <select id="editEmpresa">
+          <select id="editEmpresa" disabled>
             <option value="">Selecione a empresa</option>
             <option value="CLÍNICA">CLÍNICA</option>
             <option value="HA">HA</option>
@@ -117,32 +117,32 @@
 
         <div class="campo">
           <label for="editConvenioNome">Convênio</label>
-          <input type="text" id="editConvenioNome" placeholder="Nome do convênio">
+          <input type="text" id="editConvenioNome" placeholder="Nome do convênio" disabled>
         </div>
 
         <div class="campo campo-full">
           <label for="editRotulo">Rótulo deste acesso (opcional)</label>
-          <input type="text" id="editRotulo" placeholder="Ex: Portal principal, Acesso web...">
+          <input type="text" id="editRotulo" placeholder="Ex: Portal principal, Acesso web..." disabled>
         </div>
 
         <div class="campo">
           <label for="editLink">Link</label>
-          <input type="text" id="editLink" placeholder="https://...">
+          <input type="text" id="editLink" placeholder="https://..." disabled>
         </div>
 
         <div class="campo">
           <label for="editLogin">Login</label>
-          <input type="text" id="editLogin" placeholder="Login de acesso">
+          <input type="text" id="editLogin" placeholder="Login de acesso" disabled>
         </div>
 
         <div class="campo">
           <label for="editSenha">Senha</label>
-          <input type="text" id="editSenha" placeholder="Senha de acesso">
+          <input type="text" id="editSenha" placeholder="Senha de acesso" disabled>
         </div>
 
         <div class="campo campo-full">
           <label for="editObservacao">Observação</label>
-          <textarea id="editObservacao" rows="3" placeholder="Observações"></textarea>
+          <textarea id="editObservacao" rows="3" placeholder="Observações" disabled></textarea>
         </div>
       </div>
 
@@ -150,7 +150,7 @@
       <div class="subsecao-acessos">
         <div class="subsecao-header">
           <h3>Acessos adicionais (opcional)</h3>
-          <button type="button" id="btnAddAcesso" class="btn-verde btn-small">+ Adicionar acesso</button>
+          <button type="button" id="btnAddAcesso" class="btn-verde btn-small" disabled>+ Adicionar acesso</button>
         </div>
         <p class="painel-aviso">Use isto apenas quando o convênio realmente tiver mais de um link/login/senha. Linhas em branco não são salvas.</p>
         <div id="listaAcessosExtra"></div>
