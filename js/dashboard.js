@@ -162,6 +162,17 @@ async function selecionarConvenio(c) {
 
 /* Atualiza os campos Link / Login / Senha / Observação exibidos na tela */
 function atualizarExibicaoConvenio(c) {
+  const rotuloEl = document.getElementById("outRotuloPrincipal");
+  if (rotuloEl) {
+    if (c.rotulo && c.rotulo.trim() !== "") {
+      rotuloEl.textContent = c.rotulo;
+      rotuloEl.hidden = false;
+    } else {
+      rotuloEl.textContent = "";
+      rotuloEl.hidden = true;
+    }
+  }
+
   const linkEl = document.getElementById("outLink");
 
   if (c.link && c.link.trim() !== "") {
@@ -441,6 +452,7 @@ function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
+  document.getElementById("editRotulo").value = c.rotulo || "";
   editLink.value = c.link || "";
   document.getElementById("editLogin").value = c.login || "";
   document.getElementById("editSenha").value = c.senha || "";
@@ -455,6 +467,7 @@ function limparFormularioEdicao() {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
+  document.getElementById("editRotulo").value = "";
   editLink.value = "";
   document.getElementById("editLogin").value = "";
   document.getElementById("editSenha").value = "";
@@ -472,6 +485,7 @@ async function salvarConvenio() {
   if (!isAdmin || !convenioAtual) return;
 
   const msg = document.getElementById("msgSalvarConvenio");
+  const novoRotulo = document.getElementById("editRotulo").value.trim();
   const novoLink  = document.getElementById("editLink").value.trim();
   const novoLogin = document.getElementById("editLogin").value.trim();
   const novaSenha = document.getElementById("editSenha").value.trim();
@@ -479,7 +493,7 @@ async function salvarConvenio() {
 
   const { error } = await supabaseClient
     .from("convenios")
-    .update({ link: novoLink, login: novoLogin, senha: novaSenha, observacao: novaObs })
+    .update({ rotulo: novoRotulo, link: novoLink, login: novoLogin, senha: novaSenha, observacao: novaObs })
     .eq("id", convenioAtual.id);
 
   if (error) {
@@ -489,6 +503,7 @@ async function salvarConvenio() {
     return;
   }
 
+  convenioAtual.rotulo = novoRotulo;
   convenioAtual.link = novoLink;
   convenioAtual.login = novoLogin;
   convenioAtual.senha = novaSenha;
