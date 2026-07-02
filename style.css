@@ -338,8 +338,27 @@ hr {
   box-sizing: border-box;
   font-family: inherit;
   resize: vertical;
+  height: 41px;
+  line-height: 1.2;
 }
-.campo select { cursor: pointer; }
+.campo textarea { height: auto; }
+.campo select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%23374151' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+.campo select:disabled,
+.campo input:disabled,
+.campo textarea:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
 
 /* Acessos adicionais (opcional) */
 .subsecao-acessos { margin-top: 25px; }
