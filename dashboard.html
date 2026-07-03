@@ -292,6 +292,36 @@
     </div>
   </div>
 
+  <!-- ============================================================
+       MODAL — TROCA DE SENHA NO PRIMEIRO ACESSO (obrigatório)
+       Aparece quando usuarios.senha_alterada = false. Sem botão de
+       cancelar/fechar: o usuário precisa trocar a senha para continuar.
+  ============================================================= -->
+  <div id="modalPrimeiraSenha" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>Defina sua nova senha</h2>
+      <p class="painel-aviso">
+        Por segurança, você precisa trocar a senha padrão antes de continuar.
+        A nova senha deve ter exatamente <strong>6 números</strong> (sem letras ou símbolos).
+      </p>
+
+      <div class="modal-campo">
+        <label class="checkbox-label" style="cursor:default;">Nova senha</label>
+        <input type="password" id="novaSenhaPrimeiroAcesso" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000">
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label" style="cursor:default;">Confirmar nova senha</label>
+        <input type="password" id="confirmarSenhaPrimeiroAcesso" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000">
+      </div>
+
+      <div class="modal-botoes">
+        <button id="btnConfirmarPrimeiraSenha" class="btn-verde">Salvar nova senha</button>
+      </div>
+      <p id="msgPrimeiraSenha" class="msg-feedback"></p>
+    </div>
+  </div>
+
   <!-- LIBS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase.js"></script>
