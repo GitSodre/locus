@@ -564,6 +564,8 @@ function preencherFormularioEdicao(c) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
+  limparDestaquesRevisao();
+
   ajustarSelectEmpresa(document.getElementById("editEmpresa"), c.empresa);
   document.getElementById("editConvenioNome").value = c.convenio || "";
   document.getElementById("editRotulo").value = c.rotulo || "";
@@ -689,7 +691,7 @@ async function salvarConvenio() {
     const aviso = document.getElementById("avisoRevisao");
     if (aviso) aviso.hidden = true;
 
-    await concluirChamadoPorId(idParaConcluir);
+    await atualizarStatusChamado(idParaConcluir, "concluido");
     msg.textContent = "Alterações salvas e chamado concluído.";
   }
 }
@@ -862,7 +864,7 @@ function renderizarChamados(chamados, acessosMap) {
   const badge = document.getElementById("badgeChamados");
   if (!lista) return;
 
-  const abertos = chamados.filter(c => normalizarStatus(c.status) !== "concluido");
+  const abertos = chamados.filter(c => normalizarStatus(c.status) === "aberto");
 
   if (badge) {
     if (abertos.length > 0) { badge.textContent = abertos.length; badge.hidden = false; }
@@ -909,7 +911,7 @@ function renderizarChamados(chamados, acessosMap) {
     statusSpan.textContent = rotuloStatus(status);
     acoes.appendChild(statusSpan);
 
-    if (status !== "concluido") {
+    if (status === "aberto") {
       const btnRevisar = document.createElement("button");
       btnRevisar.className = "btn-verde btn-small";
       btnRevisar.textContent = "Revisar no formulário";
@@ -921,6 +923,13 @@ function renderizarChamados(chamados, acessosMap) {
       btnConcluir.textContent = "Concluir direto";
       btnConcluir.onclick = () => concluirChamado(c);
       acoes.appendChild(btnConcluir);
+
+      const btnRecusar = document.createElement("button");
+      btnRecusar.className = "btn-vermelho btn-small";
+      btnRecusar.textContent = "Recusar chamado";
+      btnRecusar.title = "Encerra o chamado sem aplicar nenhuma alteração";
+      btnRecusar.onclick = () => recusarChamado(c);
+      acoes.appendChild(btnRecusar);
     }
 
     item.appendChild(info);
@@ -940,11 +949,14 @@ function montarDiffChamado(c, convenioRef) {
 function normalizarStatus(status) {
   const s = (status || "").toString().replace(/'/g, "").trim().toLowerCase();
   if (s.includes("conclu")) return "concluido";
+  if (s.includes("recus")) return "recusado";
   return "aberto";
 }
 
 function rotuloStatus(status) {
-  return status === "concluido" ? "Concluído" : "Aberto";
+  if (status === "concluido") return "Concluído";
+  if (status === "recusado") return "Recusado";
+  return "Aberto";
 }
 
 function formatarData(iso) {
@@ -981,24 +993,28 @@ function revisarChamado(c) {
   selectConvenio.value = convenio.convenio;
 
   selecionarConvenio(convenio).then(() => {
+    limparDestaquesRevisao();
+    const camposAlterados = [];
+
     if (c.acesso_id) {
       const linha = acessosExtraAtual.find(a => a.id === c.acesso_id);
       if (!linha) {
         alert("O acesso adicional referenciado por este chamado não existe mais. Revise manualmente na seção de acessos adicionais.");
         return;
       }
-      if (c.novo_login) linha.login = c.novo_login;
-      if (c.nova_senha) linha.senha = c.nova_senha;
-      if (c.novo_link)  linha.link = c.novo_link;
+      if (c.novo_login) { linha.login = c.novo_login; camposAlterados.push("Login"); }
+      if (c.nova_senha) { linha.senha = c.nova_senha; camposAlterados.push("Senha"); }
+      if (c.novo_link)  { linha.link = c.novo_link; camposAlterados.push("Link"); }
       renderizarAcessosExtraForm();
+      destacarLinhaAcessoExtra(c.acesso_id, c);
     } else {
-      if (c.novo_login) document.getElementById("editLogin").value = c.novo_login;
-      if (c.nova_senha) document.getElementById("editSenha").value = c.nova_senha;
-      if (c.novo_link)  document.getElementById("editLink").value = c.novo_link;
+      if (c.novo_login) { document.getElementById("editLogin").value = c.novo_login; camposAlterados.push("Login"); destacarCampo("editLogin"); }
+      if (c.nova_senha) { document.getElementById("editSenha").value = c.nova_senha; camposAlterados.push("Senha"); destacarCampo("editSenha"); }
+      if (c.novo_link)  { document.getElementById("editLink").value = c.novo_link; camposAlterados.push("Link"); destacarCampo("editLink"); }
     }
 
     chamadoEmRevisao = c.id;
-    mostrarAvisoRevisao(c);
+    mostrarAvisoRevisao(c, camposAlterados);
 
     const painelEdicao = document.getElementById("painelEdicao");
     painelEdicao.open = true;
@@ -1006,10 +1022,37 @@ function revisarChamado(c) {
   });
 }
 
-function mostrarAvisoRevisao(c) {
+/* Marca visualmente (borda laranja) o campo do formulário principal que o chamado quer alterar */
+function destacarCampo(inputId) {
+  const input = document.getElementById(inputId);
+  const campo = input?.closest(".campo");
+  if (campo) campo.classList.add("campo-alterando");
+}
+
+/* Marca visualmente a linha de acesso adicional correspondente ao chamado */
+function destacarLinhaAcessoExtra(acessoId, c) {
+  const linhas = document.querySelectorAll("#listaAcessosExtra .acesso-extra-linha");
+  const idx = acessosExtraAtual.filter(a => !a._removido).findIndex(a => a.id === acessoId);
+  if (idx === -1 || !linhas[idx]) return;
+
+  const linha = linhas[idx];
+  if (c.novo_login) linha.querySelector(".ae-login")?.classList.add("ae-alterando");
+  if (c.nova_senha) linha.querySelector(".ae-senha")?.classList.add("ae-alterando");
+  if (c.novo_link)  linha.querySelector(".ae-link")?.classList.add("ae-alterando");
+}
+
+/* Remove os destaques de "campo sendo alterado por chamado" do formulário */
+function limparDestaquesRevisao() {
+  document.querySelectorAll(".campo.campo-alterando").forEach(el => el.classList.remove("campo-alterando"));
+  document.querySelectorAll(".ae-alterando").forEach(el => el.classList.remove("ae-alterando"));
+}
+
+function mostrarAvisoRevisao(c, camposAlterados) {
   const aviso = document.getElementById("avisoRevisao");
   if (!aviso) return;
   document.getElementById("avisoRevisaoNome").textContent = c.usuario_nome || c.usuario;
+  const camposEl = document.getElementById("avisoRevisaoCampos");
+  if (camposEl) camposEl.textContent = (camposAlterados && camposAlterados.length) ? camposAlterados.join(", ") : "nenhum campo específico";
   aviso.hidden = false;
 }
 
@@ -1017,6 +1060,7 @@ function cancelarRevisao() {
   chamadoEmRevisao = null;
   const aviso = document.getElementById("avisoRevisao");
   if (aviso) aviso.hidden = true;
+  limparDestaquesRevisao();
   if (convenioAtual && isAdmin) preencherFormularioEdicao(convenioAtual);
 }
 
@@ -1070,18 +1114,24 @@ async function concluirChamado(c) {
     }
   }
 
-  await concluirChamadoPorId(c.id);
+  await atualizarStatusChamado(c.id, "concluido");
+}
+
+/* Recusar chamado: encerra a solicitação sem aplicar nenhuma alteração nos dados */
+async function recusarChamado(c) {
+  if (!confirm("Recusar este chamado sem aplicar nenhuma alteração?")) return;
+  await atualizarStatusChamado(c.id, "recusado");
 }
 
 function normalizarLink(link) {
   return link.startsWith("http") ? link : "https://" + link;
 }
 
-async function concluirChamadoPorId(id) {
+async function atualizarStatusChamado(id, status) {
   const { error } = await supabaseClient
     .from("chamados")
     .update({
-      status: "concluido",
+      status,
       data_conclusao: new Date().toISOString(),
       admin_concluiu_email: currentUserEmail,
       admin_concluiu_nome: currentUserName
@@ -1089,9 +1139,16 @@ async function concluirChamadoPorId(id) {
     .eq("id", id);
 
   if (error) {
-    console.error("Erro ao concluir chamado:", error);
-    alert("Não foi possível concluir o chamado.");
+    console.error("Erro ao atualizar status do chamado:", error);
+    alert("Não foi possível atualizar o chamado.");
     return;
+  }
+
+  if (chamadoEmRevisao === id) {
+    chamadoEmRevisao = null;
+    const aviso = document.getElementById("avisoRevisao");
+    if (aviso) aviso.hidden = true;
+    limparDestaquesRevisao();
   }
 
   carregarChamados();
