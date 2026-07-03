@@ -229,6 +229,25 @@
     </details>
 
     <!-- ============================================================
+         PAINEL ADMIN — GERENCIAR USUÁRIOS (recolhível)
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelUsuarios" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Gerenciar usuários</h2>
+      </summary>
+      <p class="painel-aviso">
+        Troque o tipo (Admin/Usuário) ou resete a senha de alguém para o padrão <strong>123456</strong>
+        (a pessoa será obrigada a trocar no próximo login).
+      </p>
+
+      <div id="listaUsuarios" class="lista-usuarios">
+        <p class="painel-aviso">Carregando usuários...</p>
+      </div>
+    </details>
+
+    <!-- ============================================================
          PAINEL ADMIN — CHAMADOS (recolhível)
          Visível apenas para usuários com tipo = 'admin'
     ============================================================= -->
