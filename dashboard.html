@@ -12,6 +12,7 @@
 
     <div class="top">
       <h1 class="tituloden">Locus.</h1>
+      <span id="usuarioLogado" class="usuario-logado"></span>
       <button class="btn-vermelhotop" onclick="logout()">Sair</button>
     </div>
     
@@ -72,17 +73,15 @@
 
       <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
 
+      <button id="btnChamado" class="btn-verde btn-small btn-solicitar-extra" disabled>
+        Solicitar alteração de acesso
+      </button>
+
       <!-- Só aparece quando o convênio tiver acessos extras cadastrados -->
       <div id="outrosAcessos" class="outros-acessos" hidden>
         <h3>Outros acessos</h3>
         <div id="listaOutrosAcessos"></div>
       </div>
-    </div>
-
-    <div class="caixa_botoes caixa-botoes-centro">
-      <button id="btnChamado" class="btn-verde btn-small" disabled>
-        Solicitar alteração de acesso
-      </button>
     </div>
 
     <!-- ============================================================
