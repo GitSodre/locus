@@ -149,13 +149,6 @@ hr {
   margin-top: 25px;
 }
 
-/* Variante centralizada, usada quando o botão não deve ocupar a largura toda
-   (ex: botão "Solicitar alteração de acesso" do topo, do mesmo tamanho dos
-   botões "Solicitar alteração deste acesso" dos acessos adicionais) */
-.caixa-botoes-centro {
-  text-align: center;
-}
-
 /* BOTÃO VERDE */
 .btn-verde {
   padding: 12px;
@@ -230,6 +223,20 @@ hr {
 
 .pai-admin:hover { background-color: #353131; }
 .pai-admin:active { transform: scale(0.98); }
+
+/* Nome do usuário logado, exibido à esquerda do botão Sair */
+.usuario-logado {
+  position: absolute;
+  top: 0;
+  right: 65px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #93c5fd;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 
 .top {
