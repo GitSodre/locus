@@ -82,7 +82,7 @@ function exibirUsuarioLogado(email) {
   if (!el) return;
 
   const nomeCurto = (email || "").split("@")[0] || "";
-  el.textContent = nomeCurto ? `Usuário: ${nomeCurto}` : "";
+  el.textContent = nomeCurto ? `Logado como: ${nomeCurto}` : "";
 }
 
 function aplicarVisibilidadeAdmin() {
@@ -472,6 +472,22 @@ function prepararPainelAdmin() {
     acessosExtraAtual.push({ id: null, rotulo: "", link: "", login: "", senha: "", ordem: acessosExtraAtual.length, _removido: false });
     renderizarAcessosExtraForm();
   });
+
+  // Nome do convênio sempre em maiúsculas (criação e edição), sem perder a posição do cursor
+  forcarMaiusculas("novoConvenioNome");
+  forcarMaiusculas("editConvenioNome");
+}
+
+/* Converte o valor do campo para maiúsculas a cada digitação, mantendo o cursor no lugar */
+function forcarMaiusculas(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    const posicaoCursor = input.selectionStart;
+    input.value = input.value.toUpperCase();
+    input.setSelectionRange(posicaoCursor, posicaoCursor);
+  });
 }
 
 /* =====================================================
@@ -481,7 +497,7 @@ async function criarConvenio() {
   const msg = document.getElementById("msgCriarConvenio");
 
   const empresa    = document.getElementById("novoEmpresa").value.trim();
-  const convenio   = document.getElementById("novoConvenioNome").value.trim();
+  const convenio   = document.getElementById("novoConvenioNome").value.trim().toUpperCase();
   const rotulo     = document.getElementById("novoRotulo").value.trim();
   const link       = document.getElementById("novoLink").value.trim();
   const login      = document.getElementById("novoLogin").value.trim();
@@ -622,7 +638,7 @@ async function salvarConvenio() {
 
   const msg = document.getElementById("msgSalvarConvenio");
   const novaEmpresa = document.getElementById("editEmpresa").value.trim();
-  const novoConvenioNome = document.getElementById("editConvenioNome").value.trim();
+  const novoConvenioNome = document.getElementById("editConvenioNome").value.trim().toUpperCase();
   const novoRotulo = document.getElementById("editRotulo").value.trim();
   const novoLink  = document.getElementById("editLink").value.trim();
   const novoLogin = document.getElementById("editLogin").value.trim();
