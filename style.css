@@ -149,6 +149,17 @@ hr {
   margin-top: 25px;
 }
 
+/* Variante para colocar vários botões lado a lado (ex: Salvar / Cancelar / Excluir) */
+.caixa-botoes-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.caixa-botoes-linha button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 /* BOTÃO VERDE */
 .btn-verde {
   padding: 12px;
@@ -182,6 +193,26 @@ hr {
 }
 .btn-vermelho:hover { background-color: #b91c1c; }
 .btn-vermelho:active { transform: scale(0.98); }
+
+/* BOTÃO CINZA (ações neutras, como "Cancelar") */
+.btn-cinza {
+  padding: 12px;
+  background-color: #4b5563;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.btn-cinza:hover:not(:disabled) { background-color: #374151; }
+.btn-cinza:active { transform: scale(0.98); }
+.btn-cinza:disabled {
+  background-color: #374151;
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
 
 .btn-vermelhotop {
   width: 50px;
