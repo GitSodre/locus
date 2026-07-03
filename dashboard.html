@@ -79,8 +79,8 @@
       </div>
     </div>
 
-    <div class="caixa_botoes">
-      <button id="btnChamado" class="btn-verde" disabled>
+    <div class="caixa_botoes caixa-botoes-centro">
+      <button id="btnChamado" class="btn-verde btn-small" disabled>
         Solicitar alteração de acesso
       </button>
     </div>
@@ -99,7 +99,9 @@
       <!-- Aviso mostrado quando o formulário foi preenchido a partir de um chamado -->
       <p id="avisoRevisao" class="aviso-revisao" hidden>
         Revisando solicitação de <strong id="avisoRevisaoNome"></strong> —
-        ao clicar em "Salvar alterações", o chamado será marcado como concluído automaticamente.
+        alterando: <strong id="avisoRevisaoCampos"></strong>.
+        Os campos em laranja abaixo são os que essa solicitação quer mudar.
+        Ao clicar em "Salvar alterações", o chamado será marcado como concluído automaticamente.
         <button type="button" id="btnCancelarRevisao" class="link-cancelar">cancelar revisão</button>
       </p>
 
