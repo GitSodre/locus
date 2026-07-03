@@ -1,1482 +1,350 @@
-/*********************************
- * DASHBOARD.JS – FINAL E ESTÁVEL
- * + COPIAR + SHOW/HIDE
- * + PAINEL ADMIN (editar convênio + acessos adicionais)
- * + CHAMADOS (login / senha / link) com revisão facilitada
- *********************************/
-
-const ICON_COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true"><path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/></svg>`;
-
-// logout global
-window.logout = async function () {
-  await supabaseClient.auth.signOut();
-  window.location.href = "index.html";
-};
-
-let conveniosCache = [];
-let isAdmin = false;
-let currentUserEmail = "";
-let currentUserName = "";
-let convenioAtual = null;       // convênio selecionado nos filtros
-let acessosExtraAtual = [];     // acessos adicionais do convênio selecionado
-let chamadoEmRevisao = null;    // id do chamado sendo revisado no formulário do admin
-let modoEdicaoConvenio = false; // true = campos de edição do convênio destravados
-let modoCriacaoAtivo = false;   // true = campos de criação de novo convênio destravados
-
-/* ================= INIT ================= */
-document.addEventListener("DOMContentLoaded", async () => {
-  const { data: sessionData, error: sessionError } =
-    await supabaseClient.auth.getSession();
-
-  if (sessionError || !sessionData.session) {
-    window.location.href = "index.html";
-    return;
-  }
-
-  limparDados();
-  prepararBotoesDeCopia();
-  prepararPainelAdmin();
-  prepararModalChamado();
-  prepararModalPrimeiraSenha();
-
-  await verificarPapel();
-
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .select("*");
-
-  if (error) {
-    console.error("Erro ao carregar convênios:", error);
-    alert("Não foi possível carregar os convênios.");
-    await window.logout();
-    return;
-  }
-
-  conveniosCache = data || [];
-  carregarEmpresas();
-});
-
-/* =====================================================
-   PAPEL DO USUÁRIO (ADMIN x FUNCIONÁRIO)
-===================================================== */
-async function verificarPapel() {
-  const { data: userData } = await supabaseClient.auth.getUser();
-  const user = userData?.user;
-
-  currentUserEmail = user?.email || "";
-  currentUserName = user?.user_metadata?.full_name || currentUserEmail;
-
-  exibirUsuarioLogado(currentUserEmail);
-
-  const { data: userRow, error } = await supabaseClient
-    .from("usuarios")
-    .select("tipo, senha_alterada")
-    .eq("email", currentUserEmail)
-    .maybeSingle();
-
-  if (error) console.error("Erro ao verificar papel do usuário:", error);
-
-  isAdmin = (userRow?.tipo || "").toString().toLowerCase() === "admin";
-  aplicarVisibilidadeAdmin();
-
-  // Se a coluna não existir ainda ou vier null/false, tratamos como "ainda não trocou a senha padrão"
-  const jaTrocouSenha = userRow?.senha_alterada === true;
-  if (userRow && !jaTrocouSenha) {
-    exigirTrocaDeSenha();
-  }
-}
-
-function exibirUsuarioLogado(email) {
-  const el = document.getElementById("usuarioLogado");
-  if (!el) return;
-
-  const nomeCurto = (email || "").split("@")[0] || "";
-  el.textContent = nomeCurto ? `Logado como: ${nomeCurto}` : "";
-}
-
-function aplicarVisibilidadeAdmin() {
-  const painelEdicao = document.getElementById("painelEdicao");
-  const painelNovoConvenio = document.getElementById("painelNovoConvenio");
-  const painelChamados = document.getElementById("painelChamados");
-
-  if (painelEdicao) painelEdicao.hidden = !isAdmin;
-  if (painelNovoConvenio) painelNovoConvenio.hidden = !isAdmin;
-  if (painelChamados) painelChamados.hidden = !isAdmin;
-
-  if (isAdmin) carregarChamados();
-}
-
-/* ================= EMPRESAS ================= */
-function carregarEmpresas() {
-  const selectEmpresa = document.getElementById("selectEmpresa");
-  selectEmpresa.length = 1;
-
-  const empresas = [...new Set(conveniosCache.map(c => c.empresa))]
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-  empresas.forEach(emp => {
-    const opt = document.createElement("option");
-    opt.value = emp;
-    opt.textContent = emp;
-    selectEmpresa.appendChild(opt);
-  });
-
-  selectEmpresa.onchange = () => {
-    limparDados();
-    const empresa = selectEmpresa.value;
-    document.getElementById("outEmpresa").textContent = empresa || "—";
-    carregarConvenios(empresa);
-  };
-}
-
-/* ================= CONVÊNIOS ================= */
-function carregarConvenios(empresa) {
-  const selectConvenio = document.getElementById("selectConvenio");
-  selectConvenio.innerHTML = '<option value="">Selecione o convênio</option>';
-  selectConvenio.disabled = !empresa;
-
-  if (!empresa) {
-    setCopyState();
-    return;
-  }
-
-  const convenios = conveniosCache
-    .filter(c => c.empresa === empresa)
-    .map(c => c.convenio)
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
-
-  convenios.forEach(conv => {
-    const opt = document.createElement("option");
-    opt.value = conv;
-    opt.textContent = conv;
-    selectConvenio.appendChild(opt);
-  });
-
-  selectConvenio.onchange = () => {
-    const selecionado = selectConvenio.value;
-    const c = conveniosCache.find(
-      x => x.empresa === empresa && x.convenio === selecionado
-    );
-
-    if (!c) {
-      limparDados();
-      return;
-    }
-
-    cancelarRevisao();
-    selecionarConvenio(c);
-  };
-}
-
-async function selecionarConvenio(c) {
-  convenioAtual = c;
-  document.getElementById("outConvenio").textContent = c.convenio;
-  atualizarExibicaoConvenio(c);
-  document.getElementById("btnChamado").disabled = false;
-
-  await carregarAcessosExtra(c.id);
-
-  if (isAdmin) preencherFormularioEdicao(c);
-
-  setCopyState();
-}
-
-/* Atualiza os campos Link / Login / Senha / Observação exibidos na tela */
-function atualizarExibicaoConvenio(c) {
-  const rotuloEl = document.getElementById("outRotuloPrincipal");
-  if (rotuloEl) {
-    if (c.rotulo && c.rotulo.trim() !== "") {
-      rotuloEl.textContent = c.rotulo;
-      rotuloEl.hidden = false;
-    } else {
-      rotuloEl.textContent = "";
-      rotuloEl.hidden = true;
-    }
-  }
-
-  const linkEl = document.getElementById("outLink");
-
-  if (c.link && c.link.trim() !== "") {
-    const url = c.link.startsWith("http") ? c.link : "https://" + c.link;
-    linkEl.href = url;
-    linkEl.target = "_blank";
-    linkEl.rel = "noopener noreferrer";
-    linkEl.textContent = url;
-    linkEl.removeAttribute("aria-disabled");
-    linkEl.classList.remove("link-desabilitado");
-  } else {
-    linkEl.textContent = "—";
-    linkEl.removeAttribute("href");
-    linkEl.removeAttribute("target");
-    linkEl.setAttribute("aria-disabled", "true");
-    linkEl.classList.add("link-desabilitado");
-  }
-
-  document.getElementById("outLogin").textContent = safeText(c.login);
-  document.getElementById("outSenha").textContent = safeText(c.senha);
-  document.getElementById("outObservacao").textContent = safeText(c.observacao);
-}
-
-/* =====================================================
-   ACESSOS ADICIONAIS (convênios com mais de 1 link/login/senha)
-===================================================== */
-async function carregarAcessosExtra(convenioId) {
-  const { data, error } = await supabaseClient
-    .from("convenio_acessos")
-    .select("*")
-    .eq("convenio_id", convenioId)
-    .order("ordem", { ascending: true });
-
-  if (error) {
-    console.error("Erro ao carregar acessos adicionais:", error);
-    acessosExtraAtual = [];
-  } else {
-    acessosExtraAtual = (data || []).map(a => ({ ...a, _removido: false }));
-  }
-
-  renderizarOutrosAcessosView();
-  if (isAdmin) renderizarAcessosExtraForm();
-}
-
-function renderizarOutrosAcessosView() {
-  const container = document.getElementById("outrosAcessos");
-  const lista = document.getElementById("listaOutrosAcessos");
-  if (!container || !lista) return;
-
-  const validos = acessosExtraAtual.filter(a => !a._removido && (a.link || a.login || a.senha));
-
-  if (validos.length === 0) {
-    container.hidden = true;
-    lista.innerHTML = "";
-    return;
-  }
-
-  container.hidden = false;
-  lista.innerHTML = "";
-
-  validos.forEach(a => {
-    const card = document.createElement("div");
-    card.className = "acesso-extra-card";
-
-    const titulo = document.createElement("p");
-    titulo.className = "acesso-extra-titulo";
-    titulo.textContent = a.rotulo || "Acesso adicional";
-    card.appendChild(titulo);
-
-    if (a.link) card.appendChild(criarLinhaAcessoView("Link", a.link, true));
-    if (a.login) card.appendChild(criarLinhaAcessoView("Login", a.login));
-    if (a.senha) card.appendChild(criarLinhaAcessoView("Senha", a.senha));
-
-    const btnSolicitar = document.createElement("button");
-    btnSolicitar.type = "button";
-    btnSolicitar.className = "btn-verde btn-small btn-solicitar-extra";
-    btnSolicitar.textContent = "Solicitar alteração deste acesso";
-    btnSolicitar.onclick = () => abrirModalSolicitacao({
-      acessoId: a.id,
-      rotulo: a.rotulo || null,
-      login: a.login,
-      senha: a.senha,
-      link: a.link
-    });
-    card.appendChild(btnSolicitar);
-
-    lista.appendChild(card);
-  });
-}
-
-function criarLinhaAcessoView(rotulo, valor, ehLink) {
-  const p = document.createElement("p");
-
-  const strong = document.createElement("strong");
-  strong.textContent = `${rotulo}: `;
-  p.appendChild(strong);
-
-  if (ehLink) {
-    const url = valor.startsWith("http") ? valor : "https://" + valor;
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.textContent = url;
-    p.appendChild(a);
-    p.appendChild(criarBotaoCopiar(url, "link"));
-  } else {
-    const span = document.createElement("span");
-    span.textContent = valor;
-    p.appendChild(span);
-    p.appendChild(criarBotaoCopiar(valor, rotulo.toLowerCase()));
-  }
-
-  return p;
-}
-
-function criarBotaoCopiar(valor, label) {
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "btn-copy";
-  btn.title = `Copiar ${label}`;
-  btn.setAttribute("aria-label", `Copiar ${label}`);
-  btn.innerHTML = ICON_COPY_SVG;
-  btn.addEventListener("click", () => copyToClipboard(valor));
-  return btn;
-}
-
-/* Formulário de administração dos acessos adicionais */
-function renderizarAcessosExtraForm() {
-  const lista = document.getElementById("listaAcessosExtra");
-  if (!lista) return;
-
-  lista.innerHTML = "";
-
-  const editavel = !!(convenioAtual && modoEdicaoConvenio);
-
-  acessosExtraAtual.forEach((a, idx) => {
-    if (a._removido) return;
-
-    const linha = document.createElement("div");
-    linha.className = "acesso-extra-linha";
-    const atributoDisabled = editavel ? "" : "disabled";
-    linha.innerHTML = `
-      <input type="text" class="ae-rotulo" placeholder="Rótulo (ex: Acesso financeiro)" value="${escapeAttr(a.rotulo || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-link" placeholder="Link" value="${escapeAttr(a.link || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-login" placeholder="Login" value="${escapeAttr(a.login || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-senha" placeholder="Senha" value="${escapeAttr(a.senha || "")}" ${atributoDisabled}>
-    `;
-
-    const btnRemover = document.createElement("button");
-    btnRemover.type = "button";
-    btnRemover.className = "btn-vermelho btn-small";
-    btnRemover.textContent = "Remover";
-    btnRemover.disabled = !editavel;
-    btnRemover.onclick = () => {
-      if (a.id) {
-        a._removido = true;
-      } else {
-        acessosExtraAtual.splice(idx, 1);
-      }
-      renderizarAcessosExtraForm();
-    };
-    linha.appendChild(btnRemover);
-
-    linha.querySelector(".ae-rotulo").addEventListener("input", e => { a.rotulo = e.target.value; });
-    linha.querySelector(".ae-link").addEventListener("input", e => { a.link = e.target.value; });
-    linha.querySelector(".ae-login").addEventListener("input", e => { a.login = e.target.value; });
-    linha.querySelector(".ae-senha").addEventListener("input", e => { a.senha = e.target.value; });
-
-    lista.appendChild(linha);
-  });
-}
-
-function escapeAttr(str) {
-  return (str ?? "").toString().replaceAll('"', "&quot;");
-}
-
-async function salvarAcessosExtra(convenioId) {
-  const paraExcluir = acessosExtraAtual.filter(a => a._removido && a.id);
-  for (const a of paraExcluir) {
-    await supabaseClient.from("convenio_acessos").delete().eq("id", a.id);
-  }
-
-  const paraAtualizar = acessosExtraAtual.filter(a => !a._removido && a.id);
-  for (const a of paraAtualizar) {
-    await supabaseClient.from("convenio_acessos")
-      .update({ rotulo: a.rotulo || null, link: a.link || null, login: a.login || null, senha: a.senha || null })
-      .eq("id", a.id);
-  }
-
-  const paraInserir = acessosExtraAtual
-    .filter(a => !a._removido && !a.id && (a.rotulo || a.link || a.login || a.senha))
-    .map((a, i) => ({
-      convenio_id: convenioId,
-      rotulo: a.rotulo || null,
-      link: a.link || null,
-      login: a.login || null,
-      senha: a.senha || null,
-      ordem: i
-    }));
-
-  if (paraInserir.length > 0) {
-    await supabaseClient.from("convenio_acessos").insert(paraInserir);
-  }
-
-  await carregarAcessosExtra(convenioId);
-}
-
-/* ================= COPIAR (campos principais) ================= */
-function prepararBotoesDeCopia() {
-  const btnCopyLink  = document.getElementById("copyLink");
-  const btnCopyLogin = document.getElementById("copyLogin");
-  const btnCopySenha = document.getElementById("copySenha");
-
-  if (btnCopyLink)  btnCopyLink.addEventListener("click", async () => { await copyToClipboard(getValueForCopyLink()); });
-  if (btnCopyLogin) btnCopyLogin.addEventListener("click", async () => { await copyToClipboard(getTextFrom("outLogin")); });
-  if (btnCopySenha) btnCopySenha.addEventListener("click", async () => { await copyToClipboard(getTextFrom("outSenha")); });
-}
-
-function setCopyState() {
-  toggleCopyVisibility("copyLink",  !!getValueForCopyLink());
-  toggleCopyVisibility("copyLogin", !!getTextFrom("outLogin"));
-  toggleCopyVisibility("copySenha", !!getTextFrom("outSenha"));
-}
-
-function toggleCopyVisibility(btnId, show) {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-
-  if (show) {
-    btn.disabled = false;
-    btn.removeAttribute("hidden");
-    btn.style.display = "inline-block";
-  } else {
-    btn.disabled = true;
-    btn.setAttribute("hidden", "");
-    btn.style.display = "none";
-  }
-}
-
-function getValueForCopyLink() {
-  const a = document.getElementById("outLink");
-  const href = a.getAttribute("href");
-  const disabled = a.getAttribute("aria-disabled") === "true";
-  return (!disabled && href) ? href : "";
-}
-
-function getTextFrom(id) {
-  const el = document.getElementById(id);
-  const t = (el?.textContent || "").trim();
-  return (t && t !== "—") ? t : "";
-}
-
-function safeText(v) {
-  const t = (v ?? "").toString().trim();
-  return t ? t : "—";
-}
-
-async function copyToClipboard(text) {
-  if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch (e) {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    } catch (err) {
-      console.error("Falha ao copiar:", err);
-    }
-  }
-}
-
-/* =====================================================
-   PAINEL ADMIN — EDIÇÃO DO CONVÊNIO
-===================================================== */
-function prepararPainelAdmin() {
-  document.getElementById("btnSalvarConvenio")?.addEventListener("click", salvarConvenio);
-  document.getElementById("btnCancelarRevisao")?.addEventListener("click", cancelarRevisao);
-  document.getElementById("btnCriarConvenio")?.addEventListener("click", criarConvenio);
-  document.getElementById("btnCancelarEdicao")?.addEventListener("click", cancelarEdicaoConvenio);
-  document.getElementById("btnExcluirConvenio")?.addEventListener("click", excluirConvenio);
-  document.getElementById("btnCancelarNovoConvenio")?.addEventListener("click", cancelarNovoConvenio);
-  document.getElementById("btnEditarConvenio")?.addEventListener("click", habilitarEdicaoConvenio);
-  document.getElementById("btnIniciarCriacao")?.addEventListener("click", iniciarCriacaoConvenio);
-
-  document.getElementById("btnAddAcesso")?.addEventListener("click", () => {
-    acessosExtraAtual.push({ id: null, rotulo: "", link: "", login: "", senha: "", ordem: acessosExtraAtual.length, _removido: false });
-    renderizarAcessosExtraForm();
-  });
-
-  // Nome do convênio sempre em maiúsculas (criação e edição), sem perder a posição do cursor
-  forcarMaiusculas("novoConvenioNome");
-  forcarMaiusculas("editConvenioNome");
-
-  // Garante que os dois formulários comecem travados (só liberam ao clicar em "Editar"/"Começar a criar")
-  aplicarModoEdicaoConvenio();
-  aplicarModoCriacao();
-}
-
-/* Converte o valor do campo para maiúsculas a cada digitação, mantendo o cursor no lugar */
-function forcarMaiusculas(inputId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-
-  input.addEventListener("input", () => {
-    const posicaoCursor = input.selectionStart;
-    input.value = input.value.toUpperCase();
-    input.setSelectionRange(posicaoCursor, posicaoCursor);
-  });
-}
-
-/* =====================================================
-   PAINEL ADMIN — CRIAR NOVO CONVÊNIO
-===================================================== */
-
-/* Cancela a criação em andamento, limpando todos os campos do formulário */
-const CAMPOS_CRIACAO_IDS = ["novoEmpresa", "novoConvenioNome", "novoRotulo", "novoLink", "novoLogin", "novoSenha", "novoObservacao"];
-
-/* Aplica o estado visual/de bloqueio do painel de criação, conforme modoCriacaoAtivo */
-function aplicarModoCriacao() {
-  CAMPOS_CRIACAO_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !modoCriacaoAtivo;
-  });
-
-  const btnIniciar = document.getElementById("btnIniciarCriacao");
-  if (btnIniciar) btnIniciar.hidden = modoCriacaoAtivo;
-
-  const btnCriar = document.getElementById("btnCriarConvenio");
-  if (btnCriar) { btnCriar.hidden = !modoCriacaoAtivo; btnCriar.disabled = !modoCriacaoAtivo; }
-
-  const btnCancelar = document.getElementById("btnCancelarNovoConvenio");
-  if (btnCancelar) { btnCancelar.hidden = !modoCriacaoAtivo; btnCancelar.disabled = !modoCriacaoAtivo; }
-}
-
-/* Libera os campos do formulário de criação (botão "Começar a criar convênio") */
-function iniciarCriacaoConvenio() {
-  modoCriacaoAtivo = true;
-  aplicarModoCriacao();
-  document.getElementById("novoEmpresa")?.focus();
-}
-
-/* Cancela a criação em andamento, limpando e travando de novo os campos do formulário */
-function cancelarNovoConvenio() {
-  CAMPOS_CRIACAO_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-
-  const msg = document.getElementById("msgCriarConvenio");
-  if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
-
-  modoCriacaoAtivo = false;
-  aplicarModoCriacao();
-}
-
-async function criarConvenio() {
-  const msg = document.getElementById("msgCriarConvenio");
-
-  const empresa    = document.getElementById("novoEmpresa").value.trim();
-  const convenio   = document.getElementById("novoConvenioNome").value.trim().toUpperCase();
-  const rotulo     = document.getElementById("novoRotulo").value.trim();
-  const link       = document.getElementById("novoLink").value.trim();
-  const login      = document.getElementById("novoLogin").value.trim();
-  const senha      = document.getElementById("novoSenha").value.trim();
-  const observacao = document.getElementById("novoObservacao").value.trim();
-
-  if (!empresa || !convenio) {
-    msg.textContent = "Preencha ao menos Empresa e Convênio.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  const jaExiste = conveniosCache.some(c =>
-    c.empresa.toLowerCase() === empresa.toLowerCase() &&
-    c.convenio.toLowerCase() === convenio.toLowerCase()
-  );
-  if (jaExiste) {
-    msg.textContent = "Já existe um convênio com essa Empresa e Convênio. Edite o existente em vez de criar outro.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  const { data, error } = await supabaseClient
-    .from("convenios")
-    .insert({
-      empresa,
-      convenio,
-      rotulo: rotulo || null,
-      link: link || null,
-      login: login || null,
-      senha: senha || null,
-      observacao: observacao || null
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Erro ao criar convênio:", error);
-    msg.textContent = "Erro ao criar convênio.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  conveniosCache.push(data);
-
-  msg.classList.remove("erro");
-  msg.textContent = "Convênio criado com sucesso!";
-
-  CAMPOS_CRIACAO_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
-  });
-  modoCriacaoAtivo = false;
-  aplicarModoCriacao();
-
-  // atualiza os selects e já abre o convênio recém-criado para conferência
-  carregarEmpresas();
-  const selectEmpresa = document.getElementById("selectEmpresa");
-  selectEmpresa.value = data.empresa;
-  carregarConvenios(data.empresa);
-  document.getElementById("selectConvenio").value = data.convenio;
-
-  cancelarRevisao();
-  selecionarConvenio(data);
-}
-
-/* Seleciona a empresa no <select>; se o valor salvo não bater com nenhuma
-   das opções fixas (dado antigo, digitado antes dessa lista existir),
-   adiciona uma opção temporária em vez de simplesmente apagar o valor. */
-function ajustarSelectEmpresa(selectEl, valor) {
-  if (!selectEl) return;
-
-  if (!valor) {
-    selectEl.value = "";
-    return;
-  }
-
-  const existe = Array.from(selectEl.options).some(o => o.value === valor);
-  if (!existe) {
-    const opt = document.createElement("option");
-    opt.value = valor;
-    opt.textContent = `${valor} (fora do padrão — selecione uma das opções para corrigir)`;
-    selectEl.appendChild(opt);
-  }
-
-  selectEl.value = valor;
-}
-
-const CAMPOS_EDICAO_IDS = ["editEmpresa", "editConvenioNome", "editRotulo", "editLink", "editLogin", "editSenha", "editObservacao"];
-
-/* Aplica o estado visual/de bloqueio do painel de edição, conforme
-   modoEdicaoConvenio (destravado) e a existência de um convênio selecionado. */
-function aplicarModoEdicaoConvenio() {
-  const temConvenio = !!convenioAtual;
-  const editando = temConvenio && modoEdicaoConvenio;
-
-  CAMPOS_EDICAO_IDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !editando;
-  });
-
-  const btnAddAcesso = document.getElementById("btnAddAcesso");
-  if (btnAddAcesso) btnAddAcesso.disabled = !editando;
-
-  const btnEditar = document.getElementById("btnEditarConvenio");
-  if (btnEditar) {
-    btnEditar.hidden = editando;
-    btnEditar.disabled = !temConvenio;
-  }
-
-  const btnSalvar = document.getElementById("btnSalvarConvenio");
-  if (btnSalvar) {
-    btnSalvar.hidden = !editando;
-    btnSalvar.disabled = !editando;
-  }
-
-  const btnCancelar = document.getElementById("btnCancelarEdicao");
-  if (btnCancelar) {
-    btnCancelar.hidden = !editando;
-    btnCancelar.disabled = !editando;
-  }
-
-  const btnExcluir = document.getElementById("btnExcluirConvenio");
-  if (btnExcluir) btnExcluir.disabled = !temConvenio;
-
-  // Reflete o mesmo estado (travado/editável) nos acessos adicionais
-  if (isAdmin) renderizarAcessosExtraForm();
-}
-
-/* Destrava o formulário do convênio selecionado para edição (botão "Editar convênio") */
-function habilitarEdicaoConvenio() {
-  if (!convenioAtual) return;
-  modoEdicaoConvenio = true;
-  aplicarModoEdicaoConvenio();
-}
-
-function preencherFormularioEdicao(c, { iniciarEditando = false } = {}) {
-  const editLink = document.getElementById("editLink");
-  if (!editLink) return;
-
-  limparDestaquesRevisao();
-
-  ajustarSelectEmpresa(document.getElementById("editEmpresa"), c.empresa);
-  document.getElementById("editConvenioNome").value = c.convenio || "";
-  document.getElementById("editRotulo").value = c.rotulo || "";
-  editLink.value = c.link || "";
-  document.getElementById("editLogin").value = c.login || "";
-  document.getElementById("editSenha").value = c.senha || "";
-  document.getElementById("editObservacao").value = c.observacao || "";
-
-  modoEdicaoConvenio = iniciarEditando;
-  aplicarModoEdicaoConvenio();
-
-  const msg = document.getElementById("msgSalvarConvenio");
-  if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
-}
-
-function limparFormularioEdicao() {
-  const editLink = document.getElementById("editLink");
-  if (!editLink) return;
-
-  document.getElementById("editEmpresa").value = "";
-  document.getElementById("editConvenioNome").value = "";
-  document.getElementById("editRotulo").value = "";
-  editLink.value = "";
-  document.getElementById("editLogin").value = "";
-  document.getElementById("editSenha").value = "";
-  document.getElementById("editObservacao").value = "";
-
-  modoEdicaoConvenio = false;
-  aplicarModoEdicaoConvenio();
-
-  const listaAcessos = document.getElementById("listaAcessosExtra");
-  if (listaAcessos) listaAcessos.innerHTML = "";
-
-  const msg = document.getElementById("msgSalvarConvenio");
-  if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
-}
-
-/* Cancela as alterações feitas no formulário (que ainda não foram salvas) e
-   volta os campos para os valores originais do convênio, inclusive nos
-   acessos adicionais (recarrega do banco, descartando edições locais). */
-async function cancelarEdicaoConvenio() {
-  if (!isAdmin || !convenioAtual) return;
-
-  // cancelarRevisao() já reaplica os valores originais do convenioAtual no
-  // formulário e limpa qualquer destaque de revisão de chamado em aberto
-  cancelarRevisao();
-
-  // descarta edições não salvas feitas nos acessos adicionais
-  await carregarAcessosExtra(convenioAtual.id);
-
-  const msg = document.getElementById("msgSalvarConvenio");
-  if (msg) {
-    msg.classList.remove("erro");
-    msg.textContent = "Alterações descartadas.";
-  }
-}
-
-/* Exclui definitivamente o convênio selecionado (e seus acessos adicionais) */
-async function excluirConvenio() {
-  if (!isAdmin || !convenioAtual) return;
-
-  const nomeConvenio = convenioAtual.convenio;
-  const empresaConvenio = convenioAtual.empresa;
-  const idConvenio = convenioAtual.id;
-
-  const confirmou = confirm(
-    `Tem certeza que deseja excluir o convênio "${nomeConvenio}" (${empresaConvenio})?\n\n` +
-    `Essa ação não pode ser desfeita e também vai remover os acessos adicionais cadastrados nele.`
-  );
-  if (!confirmou) return;
-
-  const msg = document.getElementById("msgSalvarConvenio");
-
-  // remove primeiro os acessos adicionais, que dependem do convênio (chave estrangeira)
-  const { error: errAcessos } = await supabaseClient
-    .from("convenio_acessos")
-    .delete()
-    .eq("convenio_id", idConvenio);
-
-  if (errAcessos) {
-    console.error("Erro ao excluir acessos adicionais do convênio:", errAcessos);
-    msg.textContent = (errAcessos.code === "23503")
-      ? "Não foi possível excluir: existem chamados vinculados a acessos adicionais deste convênio. Resolva ou exclua esses chamados antes."
-      : "Erro ao excluir os acessos adicionais deste convênio.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("convenios")
-    .delete()
-    .eq("id", idConvenio);
-
-  if (error) {
-    console.error("Erro ao excluir convênio:", error);
-    msg.textContent = (error.code === "23503")
-      ? "Não foi possível excluir: existem chamados vinculados a este convênio. Resolva ou exclua esses chamados antes."
-      : "Erro ao excluir o convênio.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  conveniosCache = conveniosCache.filter(c => c.id !== idConvenio);
-
-  limparDados();
-  document.getElementById("selectEmpresa").value = "";
-  carregarEmpresas();
-  document.getElementById("selectConvenio").innerHTML = '<option value="">Selecione o convênio</option>';
-  document.getElementById("selectConvenio").disabled = true;
-
-  alert(`Convênio "${nomeConvenio}" excluído com sucesso.`);
-}
-
-async function salvarConvenio() {
-  if (!isAdmin || !convenioAtual) return;
-
-  const msg = document.getElementById("msgSalvarConvenio");
-  const novaEmpresa = document.getElementById("editEmpresa").value.trim();
-  const novoConvenioNome = document.getElementById("editConvenioNome").value.trim().toUpperCase();
-  const novoRotulo = document.getElementById("editRotulo").value.trim();
-  const novoLink  = document.getElementById("editLink").value.trim();
-  const novoLogin = document.getElementById("editLogin").value.trim();
-  const novaSenha = document.getElementById("editSenha").value.trim();
-  const novaObs   = document.getElementById("editObservacao").value.trim();
-
-  if (!novaEmpresa || !novoConvenioNome) {
-    msg.textContent = "Empresa e Convênio não podem ficar em branco.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  const duplicado = conveniosCache.some(c =>
-    c.id !== convenioAtual.id &&
-    c.empresa.toLowerCase() === novaEmpresa.toLowerCase() &&
-    c.convenio.toLowerCase() === novoConvenioNome.toLowerCase()
-  );
-  if (duplicado) {
-    msg.textContent = "Já existe outro convênio com essa combinação de Empresa e Convênio.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("convenios")
-    .update({
-      empresa: novaEmpresa,
-      convenio: novoConvenioNome,
-      rotulo: novoRotulo,
-      link: novoLink,
-      login: novoLogin,
-      senha: novaSenha,
-      observacao: novaObs
-    })
-    .eq("id", convenioAtual.id);
-
-  if (error) {
-    console.error("Erro ao salvar convênio:", error);
-    msg.textContent = "Erro ao salvar alterações.";
-    msg.classList.add("erro");
-    return;
-  }
-
-  convenioAtual.empresa = novaEmpresa;
-  convenioAtual.convenio = novoConvenioNome;
-  convenioAtual.rotulo = novoRotulo;
-  convenioAtual.link = novoLink;
-  convenioAtual.login = novoLogin;
-  convenioAtual.senha = novaSenha;
-  convenioAtual.observacao = novaObs;
-
-  const idx = conveniosCache.findIndex(x => x.id === convenioAtual.id);
-  if (idx !== -1) conveniosCache[idx] = { ...conveniosCache[idx], ...convenioAtual };
-
-  await salvarAcessosExtra(convenioAtual.id);
-
-  document.getElementById("outEmpresa").textContent = novaEmpresa;
-  document.getElementById("outConvenio").textContent = novoConvenioNome;
-  atualizarExibicaoConvenio(convenioAtual);
-  setCopyState();
-
-  // atualiza os selects (empresa/convênio podem ter sido renomeados)
-  carregarEmpresas();
-  const selectEmpresa = document.getElementById("selectEmpresa");
-  selectEmpresa.value = novaEmpresa;
-  carregarConvenios(novaEmpresa);
-  document.getElementById("selectConvenio").value = novoConvenioNome;
-
-  msg.classList.remove("erro");
-  msg.textContent = "Alterações salvas com sucesso.";
-
-  if (chamadoEmRevisao) {
-    const idParaConcluir = chamadoEmRevisao;
-    chamadoEmRevisao = null;
-
-    const aviso = document.getElementById("avisoRevisao");
-    if (aviso) aviso.hidden = true;
-
-    await atualizarStatusChamado(idParaConcluir, "concluido");
-    msg.textContent = "Alterações salvas e chamado concluído.";
-  }
-
-  // Depois de salvar, o formulário volta ao estado travado (view), até clicar em "Editar" de novo
-  modoEdicaoConvenio = false;
-  aplicarModoEdicaoConvenio();
-}
-
-/* =====================================================
-   MODAL — SOLICITAR ALTERAÇÃO DE ACESSO (usuário normal)
-   Serve tanto para o acesso principal quanto para os adicionais.
-===================================================== */
-let contextoSolicitacao = null; // { acessoId: null|id, rotulo, login, senha, link }
-
-function abrirModalSolicitacao(contexto) {
-  if (!convenioAtual) return;
-  contextoSolicitacao = contexto;
-
-  document.getElementById("modalEmpresa").textContent = convenioAtual.empresa;
-  document.getElementById("modalConvenio").textContent = convenioAtual.convenio;
-
-  const tituloAcesso = document.getElementById("modalAcessoTitulo");
-  if (tituloAcesso) {
-    tituloAcesso.textContent = contexto.rotulo ? `Acesso: ${contexto.rotulo}` : "Acesso principal";
-  }
-
-  document.getElementById("modalLoginAtual").textContent = safeText(contexto.login);
-  document.getElementById("modalSenhaAtual").textContent = safeText(contexto.senha);
-  document.getElementById("modalLinkAtual").textContent = safeText(contexto.link);
-
-  ["chkAlterarLogin", "chkAlterarSenha", "chkAlterarLink"].forEach(id => {
-    document.getElementById(id).checked = false;
-  });
-  ["modalNovoLogin", "modalNovaSenha", "modalNovoLink"].forEach(id => {
-    const el = document.getElementById(id);
-    el.value = "";
-    el.disabled = true;
-  });
-
-  const msg = document.getElementById("msgModalChamado");
-  msg.textContent = "";
-  msg.classList.remove("erro");
-
-  document.getElementById("modalChamado").hidden = false;
-}
-
-/* =====================================================
-   MODAL — TROCA DE SENHA NO PRIMEIRO ACESSO (obrigatório)
-   Exibido quando usuarios.senha_alterada = false (usuário ainda está
-   usando a senha padrão criada pelo admin no Supabase).
-===================================================== */
-function exigirTrocaDeSenha() {
-  const modal = document.getElementById("modalPrimeiraSenha");
-  if (modal) modal.hidden = false;
-}
-
-function prepararModalPrimeiraSenha() {
-  const btn = document.getElementById("btnConfirmarPrimeiraSenha");
-  if (!btn) return;
-
-  // Só permite digitar números nos dois campos, já cortando em 6 dígitos
-  ["novaSenhaPrimeiroAcesso", "confirmarSenhaPrimeiroAcesso"].forEach(id => {
-    const input = document.getElementById(id);
-    if (!input) return;
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/\D/g, "").slice(0, 6);
-    });
-  });
-
-  btn.addEventListener("click", async () => {
-    const novaSenha = document.getElementById("novaSenhaPrimeiroAcesso").value.trim();
-    const confirmacao = document.getElementById("confirmarSenhaPrimeiroAcesso").value.trim();
-    const msg = document.getElementById("msgPrimeiraSenha");
-
-    if (!/^\d{6}$/.test(novaSenha)) {
-      msg.textContent = "A senha deve ter exatamente 6 números, sem letras ou símbolos.";
-      msg.classList.add("erro");
-      return;
-    }
-    if (novaSenha !== confirmacao) {
-      msg.textContent = "As senhas digitadas não coincidem.";
-      msg.classList.add("erro");
-      return;
-    }
-
-    btn.disabled = true;
-    msg.classList.remove("erro");
-    msg.textContent = "Salvando...";
-
-    const { error: errSenha } = await supabaseClient.auth.updateUser({ password: novaSenha });
-
-    if (errSenha) {
-      console.error("Erro ao atualizar senha:", errSenha);
-      msg.textContent = "Não foi possível atualizar a senha. Tente novamente.";
-      msg.classList.add("erro");
-      btn.disabled = false;
-      return;
-    }
-
-    const { error: errUsuario } = await supabaseClient
-      .from("usuarios")
-      .update({ senha_alterada: true })
-      .eq("email", currentUserEmail);
-
-    if (errUsuario) {
-      // a senha já foi trocada no Auth; um erro aqui só afeta a marcação de "já trocou",
-      // então deixamos o usuário seguir mesmo assim
-      console.error("Erro ao marcar senha como trocada:", errUsuario);
-    }
-
-    msg.classList.remove("erro");
-    msg.textContent = "Senha atualizada com sucesso!";
-
-    setTimeout(() => {
-      const modal = document.getElementById("modalPrimeiraSenha");
-      if (modal) modal.hidden = true;
-      document.getElementById("novaSenhaPrimeiroAcesso").value = "";
-      document.getElementById("confirmarSenhaPrimeiroAcesso").value = "";
-      msg.textContent = "";
-      msg.classList.remove("erro");
-      btn.disabled = false;
-    }, 1000);
-  });
-}
-
-function prepararModalChamado() {
-  const btnChamado = document.getElementById("btnChamado");
-  const modal = document.getElementById("modalChamado");
-  const btnCancelar = document.getElementById("btnCancelarChamado");
-  const btnConfirmar = document.getElementById("btnConfirmarChamado");
-
-  if (!btnChamado || !modal) return;
-
-  ligarCheckboxCampo("chkAlterarLogin", "modalNovoLogin");
-  ligarCheckboxCampo("chkAlterarSenha", "modalNovaSenha");
-  ligarCheckboxCampo("chkAlterarLink",  "modalNovoLink");
-
-  btnChamado.addEventListener("click", () => {
-    if (!convenioAtual) return;
-    abrirModalSolicitacao({
-      acessoId: null,
-      rotulo: convenioAtual.rotulo || null,
-      login: convenioAtual.login,
-      senha: convenioAtual.senha,
-      link: convenioAtual.link
-    });
-  });
-
-  btnCancelar?.addEventListener("click", () => { modal.hidden = true; });
-
-  btnConfirmar?.addEventListener("click", async () => {
-    if (!convenioAtual || !contextoSolicitacao) return;
-
-    const alterarLogin = document.getElementById("chkAlterarLogin").checked;
-    const alterarSenha = document.getElementById("chkAlterarSenha").checked;
-    const alterarLink  = document.getElementById("chkAlterarLink").checked;
-
-    const novoLogin = document.getElementById("modalNovoLogin").value.trim();
-    const novaSenha = document.getElementById("modalNovaSenha").value.trim();
-    const novoLink  = document.getElementById("modalNovoLink").value.trim();
-
-    const msg = document.getElementById("msgModalChamado");
-
-    if (!alterarLogin && !alterarSenha && !alterarLink) {
-      msg.textContent = "Marque ao menos um campo para alterar.";
-      msg.classList.add("erro");
-      return;
-    }
-    if ((alterarLogin && !novoLogin) || (alterarSenha && !novaSenha) || (alterarLink && !novoLink)) {
-      msg.textContent = "Preencha o novo valor dos campos marcados.";
-      msg.classList.add("erro");
-      return;
-    }
-
-    const { error } = await supabaseClient.from("chamados").insert({
-      usuario: currentUserEmail,
-      usuario_nome: currentUserName,
-      empresa: convenioAtual.empresa,
-      convenio: convenioAtual.convenio,
-      convenio_id: convenioAtual.id,
-      acesso_id: contextoSolicitacao.acessoId,
-      acesso_rotulo: contextoSolicitacao.rotulo,
-      login: contextoSolicitacao.login,
-      novo_login: alterarLogin ? novoLogin : null,
-      nova_senha: alterarSenha ? novaSenha : null,
-      novo_link: alterarLink ? novoLink : null,
-      status: "aberto",
-      visualizado: false
-    });
-
-    if (error) {
-      console.error("Erro ao enviar chamado:", error);
-      msg.textContent = "Erro ao enviar solicitação.";
-      msg.classList.add("erro");
-      return;
-    }
-
-    msg.classList.remove("erro");
-    msg.textContent = "Solicitação enviada com sucesso!";
-    setTimeout(() => { modal.hidden = true; }, 1200);
-  });
-}
-
-function ligarCheckboxCampo(checkboxId, inputId) {
-  const chk = document.getElementById(checkboxId);
-  const input = document.getElementById(inputId);
-  if (!chk || !input) return;
-
-  chk.addEventListener("change", () => {
-    input.disabled = !chk.checked;
-    if (!chk.checked) input.value = "";
-    else input.focus();
-  });
-}
-
-/* =====================================================
-   PAINEL ADMIN — LISTA DE CHAMADOS
-===================================================== */
-async function carregarChamados() {
-  const { data, error } = await supabaseClient
-    .from("chamados")
-    .select("*")
-    .order("data_abertura", { ascending: false });
-
-  if (error) {
-    console.error("Erro ao carregar chamados:", error);
-    return;
-  }
-
-  const chamados = data || [];
-
-  const idsAcesso = [...new Set(chamados.filter(c => c.acesso_id).map(c => c.acesso_id))];
-  let acessosMap = {};
-
-  if (idsAcesso.length > 0) {
-    const { data: acessosData, error: errAcessos } = await supabaseClient
-      .from("convenio_acessos")
-      .select("*")
-      .in("id", idsAcesso);
-
-    if (errAcessos) {
-      console.error("Erro ao carregar acessos referenciados pelos chamados:", errAcessos);
-    } else {
-      (acessosData || []).forEach(a => { acessosMap[a.id] = a; });
-    }
-  }
-
-  renderizarChamados(chamados, acessosMap);
-}
-
-function renderizarChamados(chamados, acessosMap) {
-  const lista = document.getElementById("listaChamados");
-  const badge = document.getElementById("badgeChamados");
-  if (!lista) return;
-
-  const abertos = chamados.filter(c => normalizarStatus(c.status) === "aberto");
-
-  if (badge) {
-    if (abertos.length > 0) { badge.textContent = abertos.length; badge.hidden = false; }
-    else badge.hidden = true;
-  }
-
-  if (chamados.length === 0) {
-    lista.innerHTML = '<p class="painel-aviso">Nenhum chamado no momento.</p>';
-    return;
-  }
-
-  lista.innerHTML = "";
-
-  chamados.forEach(c => {
-    const status = normalizarStatus(c.status);
-    const convenioRef = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
-      || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
-
-    const referencia = c.acesso_id ? acessosMap[c.acesso_id] : convenioRef;
-    const tituloAcesso = c.acesso_id
-      ? `Acesso: ${c.acesso_rotulo || "adicional"}`
-      : (convenioRef?.rotulo ? `Acesso: ${convenioRef.rotulo}` : "Acesso principal");
-
-    const item = document.createElement("div");
-    item.className = "chamado-item";
-
-    const info = document.createElement("div");
-    info.className = "chamado-info";
-
-    const diff = montarDiffChamado(c, referencia);
-
-    info.innerHTML = `
-      <p><strong>${escapeHtml(c.usuario_nome || c.usuario)}</strong> — ${escapeHtml(c.empresa)} / ${escapeHtml(c.convenio)}</p>
-      <p class="chamado-acesso-titulo">${escapeHtml(tituloAcesso)}</p>
-      <p class="chamado-diff">${diff || "Nenhuma alteração especificada."}</p>
-      <p class="chamado-data">Aberto em: ${formatarData(c.data_abertura)}</p>
-    `;
-
-    const acoes = document.createElement("div");
-    acoes.className = "chamado-acoes";
-
-    const statusSpan = document.createElement("span");
-    statusSpan.className = `status-badge status-${status}`;
-    statusSpan.textContent = rotuloStatus(status);
-    acoes.appendChild(statusSpan);
-
-    if (status === "aberto") {
-      const btnRevisar = document.createElement("button");
-      btnRevisar.className = "btn-verde btn-small";
-      btnRevisar.textContent = "Revisar no formulário";
-      btnRevisar.onclick = () => revisarChamado(c);
-      acoes.appendChild(btnRevisar);
-
-      const btnConcluir = document.createElement("button");
-      btnConcluir.className = "btn-verde btn-small";
-      btnConcluir.textContent = "Concluir direto";
-      btnConcluir.onclick = () => concluirChamado(c);
-      acoes.appendChild(btnConcluir);
-
-      const btnRecusar = document.createElement("button");
-      btnRecusar.className = "btn-vermelho btn-small";
-      btnRecusar.textContent = "Recusar chamado";
-      btnRecusar.title = "Encerra o chamado sem aplicar nenhuma alteração";
-      btnRecusar.onclick = () => recusarChamado(c);
-      acoes.appendChild(btnRecusar);
-    }
-
-    item.appendChild(info);
-    item.appendChild(acoes);
-    lista.appendChild(item);
-  });
-}
-
-function montarDiffChamado(c, convenioRef) {
-  const linhas = [];
-  if (c.novo_login) linhas.push(`Login: ${escapeHtml(convenioRef?.login || "—")} → <strong>${escapeHtml(c.novo_login)}</strong>`);
-  if (c.nova_senha) linhas.push(`Senha: ${escapeHtml(convenioRef?.senha || "—")} → <strong>${escapeHtml(c.nova_senha)}</strong>`);
-  if (c.novo_link)  linhas.push(`Link: ${escapeHtml(convenioRef?.link || "—")} → <strong>${escapeHtml(c.novo_link)}</strong>`);
-  return linhas.join("<br>");
-}
-
-function normalizarStatus(status) {
-  const s = (status || "").toString().replace(/'/g, "").trim().toLowerCase();
-  if (s.includes("conclu")) return "concluido";
-  if (s.includes("recus")) return "recusado";
-  return "aberto";
-}
-
-function rotuloStatus(status) {
-  if (status === "concluido") return "Concluído";
-  if (status === "recusado") return "Recusado";
-  return "Aberto";
-}
-
-function formatarData(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("pt-BR");
-  } catch {
-    return "—";
-  }
-}
-
-function escapeHtml(str) {
-  return (str ?? "").toString()
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-/* Revisar no formulário: seleciona o convênio e pré-preenche com o que foi pedido */
-function revisarChamado(c) {
-  const convenio = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
-    || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
-
-  if (!convenio) {
-    alert("Não foi possível localizar o convênio deste chamado.");
-    return;
-  }
-
-  const selectEmpresa = document.getElementById("selectEmpresa");
-  const selectConvenio = document.getElementById("selectConvenio");
-
-  selectEmpresa.value = convenio.empresa;
-  carregarConvenios(convenio.empresa);
-  selectConvenio.value = convenio.convenio;
-
-  selecionarConvenio(convenio).then(() => {
-    // Atender um chamado já abre o formulário destravado para edição direta
-    modoEdicaoConvenio = true;
-    aplicarModoEdicaoConvenio();
-
-    limparDestaquesRevisao();
-    const camposAlterados = [];
-
-    if (c.acesso_id) {
-      const linha = acessosExtraAtual.find(a => a.id === c.acesso_id);
-      if (!linha) {
-        alert("O acesso adicional referenciado por este chamado não existe mais. Revise manualmente na seção de acessos adicionais.");
-        return;
-      }
-      if (c.novo_login) { linha.login = c.novo_login; camposAlterados.push("Login"); }
-      if (c.nova_senha) { linha.senha = c.nova_senha; camposAlterados.push("Senha"); }
-      if (c.novo_link)  { linha.link = c.novo_link; camposAlterados.push("Link"); }
-      renderizarAcessosExtraForm();
-      destacarLinhaAcessoExtra(c.acesso_id, c);
-    } else {
-      if (c.novo_login) { document.getElementById("editLogin").value = c.novo_login; camposAlterados.push("Login"); destacarCampo("editLogin"); }
-      if (c.nova_senha) { document.getElementById("editSenha").value = c.nova_senha; camposAlterados.push("Senha"); destacarCampo("editSenha"); }
-      if (c.novo_link)  { document.getElementById("editLink").value = c.novo_link; camposAlterados.push("Link"); destacarCampo("editLink"); }
-    }
-
-    chamadoEmRevisao = c.id;
-    mostrarAvisoRevisao(c, camposAlterados);
-
-    const painelEdicao = document.getElementById("painelEdicao");
-    painelEdicao.open = true;
-    painelEdicao.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-
-/* Marca visualmente (borda laranja) o campo do formulário principal que o chamado quer alterar */
-function destacarCampo(inputId) {
-  const input = document.getElementById(inputId);
-  const campo = input?.closest(".campo");
-  if (campo) campo.classList.add("campo-alterando");
-}
-
-/* Marca visualmente a linha de acesso adicional correspondente ao chamado */
-function destacarLinhaAcessoExtra(acessoId, c) {
-  const linhas = document.querySelectorAll("#listaAcessosExtra .acesso-extra-linha");
-  const idx = acessosExtraAtual.filter(a => !a._removido).findIndex(a => a.id === acessoId);
-  if (idx === -1 || !linhas[idx]) return;
-
-  const linha = linhas[idx];
-  if (c.novo_login) linha.querySelector(".ae-login")?.classList.add("ae-alterando");
-  if (c.nova_senha) linha.querySelector(".ae-senha")?.classList.add("ae-alterando");
-  if (c.novo_link)  linha.querySelector(".ae-link")?.classList.add("ae-alterando");
-}
-
-/* Remove os destaques de "campo sendo alterado por chamado" do formulário */
-function limparDestaquesRevisao() {
-  document.querySelectorAll(".campo.campo-alterando").forEach(el => el.classList.remove("campo-alterando"));
-  document.querySelectorAll(".ae-alterando").forEach(el => el.classList.remove("ae-alterando"));
-}
-
-function mostrarAvisoRevisao(c, camposAlterados) {
-  const aviso = document.getElementById("avisoRevisao");
-  if (!aviso) return;
-  document.getElementById("avisoRevisaoNome").textContent = c.usuario_nome || c.usuario;
-  const camposEl = document.getElementById("avisoRevisaoCampos");
-  if (camposEl) camposEl.textContent = (camposAlterados && camposAlterados.length) ? camposAlterados.join(", ") : "nenhum campo específico";
-  aviso.hidden = false;
-}
-
-function cancelarRevisao() {
-  chamadoEmRevisao = null;
-  const aviso = document.getElementById("avisoRevisao");
-  if (aviso) aviso.hidden = true;
-  limparDestaquesRevisao();
-  if (convenioAtual && isAdmin) preencherFormularioEdicao(convenioAtual);
-}
-
-/* Concluir direto: aplica as alterações sem passar pelo formulário */
-async function concluirChamado(c) {
-  const payload = {};
-  if (c.novo_login) payload.login = c.novo_login;
-  if (c.nova_senha) payload.senha = c.nova_senha;
-  if (c.novo_link)  payload.link = normalizarLink(c.novo_link);
-
-  if (Object.keys(payload).length > 0) {
-    if (c.acesso_id) {
-      // acesso adicional: atualiza direto em convenio_acessos
-      const { error: errAcesso } = await supabaseClient
-        .from("convenio_acessos")
-        .update(payload)
-        .eq("id", c.acesso_id);
-
-      if (errAcesso) {
-        console.error("Erro ao aplicar alterações no acesso adicional:", errAcesso);
-        alert("Não foi possível aplicar as alterações neste acesso adicional.");
-        return;
-      }
-
-      // se o convênio dono desse acesso é o que está aberto na tela, recarrega a exibição
-      if (convenioAtual && c.convenio_id === convenioAtual.id) {
-        await carregarAcessosExtra(convenioAtual.id);
-      }
-    } else {
-      // acesso principal: atualiza em convenios
-      let query = supabaseClient.from("convenios").update(payload);
-      query = c.convenio_id ? query.eq("id", c.convenio_id) : query.eq("empresa", c.empresa).eq("convenio", c.convenio);
-      const { error: errConvenio } = await query;
-
-      if (errConvenio) {
-        console.error("Erro ao aplicar alterações no convênio:", errConvenio);
-        alert("Não foi possível aplicar as alterações no convênio.");
-        return;
-      }
-
-      const idx = conveniosCache.findIndex(x => (c.convenio_id && x.id === c.convenio_id) || (x.empresa === c.empresa && x.convenio === c.convenio));
-      if (idx !== -1) {
-        Object.assign(conveniosCache[idx], payload);
-        if (convenioAtual && convenioAtual.id === conveniosCache[idx].id) {
-          Object.assign(convenioAtual, payload);
-          atualizarExibicaoConvenio(convenioAtual);
-          if (isAdmin) preencherFormularioEdicao(convenioAtual);
-          setCopyState();
-        }
-      }
-    }
-  }
-
-  await atualizarStatusChamado(c.id, "concluido");
-}
-
-/* Recusar chamado: encerra a solicitação sem aplicar nenhuma alteração nos dados */
-async function recusarChamado(c) {
-  if (!confirm("Recusar este chamado sem aplicar nenhuma alteração?")) return;
-  await atualizarStatusChamado(c.id, "recusado");
-}
-
-function normalizarLink(link) {
-  return link.startsWith("http") ? link : "https://" + link;
-}
-
-async function atualizarStatusChamado(id, status) {
-  const { error } = await supabaseClient
-    .from("chamados")
-    .update({
-      status,
-      data_conclusao: new Date().toISOString(),
-      admin_concluiu_email: currentUserEmail,
-      admin_concluiu_nome: currentUserName
-    })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Erro ao atualizar status do chamado:", error);
-    alert("Não foi possível atualizar o chamado.");
-    return;
-  }
-
-  if (chamadoEmRevisao === id) {
-    chamadoEmRevisao = null;
-    const aviso = document.getElementById("avisoRevisao");
-    if (aviso) aviso.hidden = true;
-    limparDestaquesRevisao();
-  }
-
-  carregarChamados();
-}
-
-/* ================= LIMPEZA ================= */
-function limparDados() {
-  convenioAtual = null;
-  acessosExtraAtual = [];
-
-  document.getElementById("outEmpresa").textContent = "—";
-  document.getElementById("outConvenio").textContent = "—";
-
-  const linkEl = document.getElementById("outLink");
-  linkEl.textContent = "—";
-  linkEl.removeAttribute("href");
-  linkEl.removeAttribute("target");
-  linkEl.setAttribute("aria-disabled", "true");
-  linkEl.classList.add("link-desabilitado");
-
-  document.getElementById("outLogin").textContent = "—";
-  document.getElementById("outSenha").textContent = "—";
-  document.getElementById("outObservacao").textContent = "—";
-
-  document.getElementById("btnChamado").disabled = true;
-  document.getElementById("selectConvenio").disabled = true;
-
-  const outros = document.getElementById("outrosAcessos");
-  if (outros) outros.hidden = true;
-
-  limparFormularioEdicao();
-  cancelarRevisao();
-  setCopyState();
-}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - Locus</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-page">
+
+  <div class="dashboard-container">
+
+    <div class="top">
+      <h1 class="tituloden">Locus.</h1>
+      <span id="usuarioLogado" class="usuario-logado"></span>
+      <button class="btn-vermelhotop" onclick="logout()">Sair</button>
+    </div>
+    
+    <H2>Consulta de convênios</H2>
+      
+    <div class="filtros-linha">
+      <div class="filtro">
+        <label>Empresa</label>
+        <select id="selectEmpresa">
+          <option value="">Selecione a empresa</option>
+        </select>
+      </div>
+
+      <div class="filtro">
+        <label>Convênio</label>
+        <select id="selectConvenio" disabled>
+          <option value="">Selecione o convênio</option>
+        </select>
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="dados-convenio">
+      <p><strong>Empresa:</strong> <span id="outEmpresa">—</span></p>
+      <p><strong>Convênio:</strong> <span id="outConvenio">—</span></p>
+
+      <!-- Só aparece quando o acesso principal tiver um rótulo definido -->
+      <p id="outRotuloPrincipal" class="acesso-extra-titulo" hidden>—</p>
+
+      <p>
+        <strong>Link:</strong>
+        <a id="outLink" target="_blank" rel="noopener noreferrer">—</a>
+        <button class="btn-copy" id="copyLink" aria-label="Copiar link" title="Copiar link" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
+      </p>
+
+      <p>
+        <strong>Login:</strong> <span id="outLogin">—</span>
+        <button class="btn-copy" id="copyLogin" aria-label="Copiar login" title="Copiar login" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
+      </p>
+
+      <p>
+        <strong>Senha:</strong> <span id="outSenha">—</span>
+        <button class="btn-copy" id="copySenha" aria-label="Copiar senha" title="Copiar senha" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-copy" aria-hidden="true">
+            <path d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+          </svg>
+        </button>
+      </p>
+
+      <p><strong>Observação:</strong> <span id="outObservacao">—</span></p>
+
+      <button id="btnChamado" class="btn-verde btn-small btn-solicitar-extra" disabled>
+        Solicitar alteração de acesso
+      </button>
+
+      <!-- Só aparece quando o convênio tiver acessos extras cadastrados -->
+      <div id="outrosAcessos" class="outros-acessos" hidden>
+        <h3>Outros acessos</h3>
+        <div id="listaOutrosAcessos"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         PAINEL ADMIN — EDIÇÃO DO CONVÊNIO SELECIONADO
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelEdicao" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Painel Admin — Editar convênio</h2>
+      </summary>
+      <p class="painel-aviso">Selecione uma empresa e um convênio acima. Os dados aparecem bloqueados — clique em "Editar convênio" para alterá-los.</p>
+
+      <!-- Aviso mostrado quando o formulário foi preenchido a partir de um chamado -->
+      <p id="avisoRevisao" class="aviso-revisao" hidden>
+        Revisando solicitação de <strong id="avisoRevisaoNome"></strong> —
+        alterando: <strong id="avisoRevisaoCampos"></strong>.
+        Os campos em laranja abaixo são os que essa solicitação quer mudar.
+        Ao clicar em "Salvar alterações", o chamado será marcado como concluído automaticamente.
+        <button type="button" id="btnCancelarRevisao" class="link-cancelar">cancelar revisão</button>
+      </p>
+
+      <div class="form-grid">
+        <div class="campo">
+          <label for="editEmpresa">Empresa</label>
+          <select id="editEmpresa" disabled>
+            <option value="">Selecione a empresa</option>
+            <option value="CLÍNICA">CLÍNICA</option>
+            <option value="HA">HA</option>
+            <option value="CTS">CTS</option>
+            <option value="CTN">CTN</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="editConvenioNome">Convênio</label>
+          <input type="text" id="editConvenioNome" placeholder="Nome do convênio" disabled>
+        </div>
+
+        <div class="campo campo-full">
+          <label for="editRotulo">Rótulo deste acesso (opcional)</label>
+          <input type="text" id="editRotulo" placeholder="Ex: Portal principal, Acesso web..." disabled>
+        </div>
+
+        <div class="campo">
+          <label for="editLink">Link</label>
+          <input type="text" id="editLink" placeholder="https://..." disabled>
+        </div>
+
+        <div class="campo">
+          <label for="editLogin">Login</label>
+          <input type="text" id="editLogin" placeholder="Login de acesso" disabled>
+        </div>
+
+        <div class="campo">
+          <label for="editSenha">Senha</label>
+          <input type="text" id="editSenha" placeholder="Senha de acesso" disabled>
+        </div>
+
+        <div class="campo campo-full">
+          <label for="editObservacao">Observação</label>
+          <textarea id="editObservacao" rows="3" placeholder="Observações" disabled></textarea>
+        </div>
+      </div>
+
+      <!-- Acessos adicionais (opcional) — só para convênios que têm mais de 1 link/login/senha -->
+      <div class="subsecao-acessos">
+        <div class="subsecao-header">
+          <h3>Acessos adicionais (opcional)</h3>
+          <button type="button" id="btnAddAcesso" class="btn-verde btn-small" disabled>+ Adicionar acesso</button>
+        </div>
+        <p class="painel-aviso">Use isto apenas quando o convênio realmente tiver mais de um link/login/senha. Linhas em branco não são salvas.</p>
+        <div id="listaAcessosExtra"></div>
+      </div>
+
+      <div class="caixa_botoes caixa-botoes-linha">
+        <button id="btnEditarConvenio" class="btn-verde" disabled>Editar convênio</button>
+        <button id="btnSalvarConvenio" class="btn-verde" disabled hidden>Salvar alterações</button>
+        <button id="btnCancelarEdicao" class="btn-cinza" disabled hidden>Cancelar alterações</button>
+        <button id="btnExcluirConvenio" class="btn-vermelho" disabled>Excluir convênio</button>
+      </div>
+      <p id="msgSalvarConvenio" class="msg-feedback"></p>
+    </details>
+
+    <!-- ============================================================
+         PAINEL ADMIN — CRIAR NOVO CONVÊNIO (recolhível)
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelNovoConvenio" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Painel Admin — Criar novo convênio</h2>
+      </summary>
+      <p class="painel-aviso">Clique em "Começar a criar convênio" para liberar os campos abaixo.</p>
+
+      <div class="form-grid">
+        <div class="campo">
+          <label for="novoEmpresa">Empresa</label>
+          <select id="novoEmpresa" disabled>
+            <option value="">Selecione a empresa</option>
+            <option value="CLÍNICA">CLÍNICA</option>
+            <option value="HA">HA</option>
+            <option value="CTS">CTS</option>
+            <option value="CTN">CTN</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label for="novoConvenioNome">Convênio</label>
+          <input type="text" id="novoConvenioNome" placeholder="Nome do convênio" disabled>
+        </div>
+
+        <div class="campo campo-full">
+          <label for="novoRotulo">Rótulo deste acesso (opcional)</label>
+          <input type="text" id="novoRotulo" placeholder="Ex: Portal principal, Acesso web..." disabled>
+        </div>
+
+        <div class="campo">
+          <label for="novoLink">Link</label>
+          <input type="text" id="novoLink" placeholder="https://..." disabled>
+        </div>
+
+        <div class="campo">
+          <label for="novoLogin">Login</label>
+          <input type="text" id="novoLogin" placeholder="Login de acesso" disabled>
+        </div>
+
+        <div class="campo">
+          <label for="novoSenha">Senha</label>
+          <input type="text" id="novoSenha" placeholder="Senha de acesso" disabled>
+        </div>
+
+        <div class="campo campo-full">
+          <label for="novoObservacao">Observação</label>
+          <textarea id="novoObservacao" rows="3" placeholder="Observações" disabled></textarea>
+        </div>
+      </div>
+
+      <div class="caixa_botoes caixa-botoes-linha">
+        <button id="btnIniciarCriacao" class="btn-verde">Começar a criar convênio</button>
+        <button id="btnCriarConvenio" class="btn-verde" hidden>Criar convênio</button>
+        <button id="btnCancelarNovoConvenio" class="btn-cinza" hidden>Cancelar</button>
+      </div>
+      <p id="msgCriarConvenio" class="msg-feedback"></p>
+    </details>
+
+    <!-- ============================================================
+         PAINEL ADMIN — GERENCIAR USUÁRIOS (recolhível)
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelUsuarios" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Gerenciar usuários</h2>
+      </summary>
+      <p class="painel-aviso">
+        Troque o tipo (Admin/Usuário) ou resete a senha de alguém para o padrão <strong>123456</strong>
+        (a pessoa será obrigada a trocar no próximo login).
+      </p>
+
+      <div id="listaUsuarios" class="lista-usuarios">
+        <p class="painel-aviso">Carregando usuários...</p>
+      </div>
+    </details>
+
+    <!-- ============================================================
+         PAINEL ADMIN — CHAMADOS (recolhível)
+         Visível apenas para usuários com tipo = 'admin'
+    ============================================================= -->
+    <details id="painelChamados" class="painel-admin" hidden>
+      <hr>
+      <summary>
+        <h2>Chamados de alteração <span id="badgeChamados" class="badge" hidden>0</span></h2>
+      </summary>
+
+      <div id="listaChamados" class="lista-chamados">
+        <p class="painel-aviso">Nenhum chamado no momento.</p>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- ============================================================
+       MODAL — SOLICITAR ALTERAÇÃO DE ACESSO (usuários normais)
+  ============================================================= -->
+  <div id="modalChamado" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>Solicitar alteração de acesso</h2>
+      <p class="painel-aviso">
+        Empresa: <strong id="modalEmpresa">—</strong><br>
+        Convênio: <strong id="modalConvenio">—</strong><br>
+        <span id="modalAcessoTitulo">Acesso principal</span>
+      </p>
+      <p class="painel-aviso">
+        Marque somente os campos que deseja alterar. O que ficar desmarcado continua com o valor atual.
+      </p>
+
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarLogin">
+          Alterar login <span class="valor-atual">(atual: <span id="modalLoginAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovoLogin" placeholder="Novo login" disabled>
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarSenha">
+          Alterar senha <span class="valor-atual">(atual: <span id="modalSenhaAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovaSenha" placeholder="Nova senha" disabled>
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label">
+          <input type="checkbox" id="chkAlterarLink">
+          Alterar link <span class="valor-atual">(atual: <span id="modalLinkAtual">—</span>)</span>
+        </label>
+        <input type="text" id="modalNovoLink" placeholder="Novo link" disabled>
+      </div>
+
+      <div class="modal-botoes">
+        <button id="btnCancelarChamado" class="btn-vermelho">Cancelar</button>
+        <button id="btnConfirmarChamado" class="btn-verde">Enviar solicitação</button>
+      </div>
+      <p id="msgModalChamado" class="msg-feedback"></p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL — TROCA DE SENHA NO PRIMEIRO ACESSO (obrigatório)
+       Aparece quando usuarios.senha_alterada = false. Sem botão de
+       cancelar/fechar: o usuário precisa trocar a senha para continuar.
+  ============================================================= -->
+  <div id="modalPrimeiraSenha" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>Defina sua nova senha</h2>
+      <p class="painel-aviso">
+        Por segurança, você precisa trocar a senha padrão antes de continuar.
+        A nova senha deve ter exatamente <strong>6 números</strong> (sem letras ou símbolos).
+      </p>
+
+      <div class="modal-campo">
+        <label class="checkbox-label" style="cursor:default;">Nova senha</label>
+        <input type="password" id="novaSenhaPrimeiroAcesso" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000">
+      </div>
+
+      <div class="modal-campo">
+        <label class="checkbox-label" style="cursor:default;">Confirmar nova senha</label>
+        <input type="password" id="confirmarSenhaPrimeiroAcesso" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000">
+      </div>
+
+      <div class="modal-botoes">
+        <button id="btnConfirmarPrimeiraSenha" class="btn-verde">Salvar nova senha</button>
+      </div>
+      <p id="msgPrimeiraSenha" class="msg-feedback"></p>
+    </div>
+  </div>
+
+  <!-- LIBS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/dashboard.js"></script>
+
+</body>
+</html>
