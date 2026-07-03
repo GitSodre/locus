@@ -37,7 +37,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   prepararBotoesDeCopia();
   prepararPainelAdmin();
   prepararModalChamado();
-  prepararModalPrimeiraSenha();
 
   await verificarPapel();
 
@@ -70,7 +69,7 @@ async function verificarPapel() {
 
   const { data: userRow, error } = await supabaseClient
     .from("usuarios")
-    .select("tipo, senha_alterada")
+    .select("tipo")
     .eq("email", currentUserEmail)
     .maybeSingle();
 
@@ -78,12 +77,6 @@ async function verificarPapel() {
 
   isAdmin = (userRow?.tipo || "").toString().toLowerCase() === "admin";
   aplicarVisibilidadeAdmin();
-
-  // Se a coluna não existir ainda ou vier null/false, tratamos como "ainda não trocou a senha padrão"
-  const jaTrocouSenha = userRow?.senha_alterada === true;
-  if (userRow && !jaTrocouSenha) {
-    exigirTrocaDeSenha();
-  }
 }
 
 function exibirUsuarioLogado(email) {
@@ -953,85 +946,6 @@ function abrirModalSolicitacao(contexto) {
   document.getElementById("modalChamado").hidden = false;
 }
 
-/* =====================================================
-   MODAL — TROCA DE SENHA NO PRIMEIRO ACESSO (obrigatório)
-   Exibido quando usuarios.senha_alterada = false (usuário ainda está
-   usando a senha padrão criada pelo admin no Supabase).
-===================================================== */
-function exigirTrocaDeSenha() {
-  const modal = document.getElementById("modalPrimeiraSenha");
-  if (modal) modal.hidden = false;
-}
-
-function prepararModalPrimeiraSenha() {
-  const btn = document.getElementById("btnConfirmarPrimeiraSenha");
-  if (!btn) return;
-
-  // Só permite digitar números nos dois campos, já cortando em 6 dígitos
-  ["novaSenhaPrimeiroAcesso", "confirmarSenhaPrimeiroAcesso"].forEach(id => {
-    const input = document.getElementById(id);
-    if (!input) return;
-    input.addEventListener("input", () => {
-      input.value = input.value.replace(/\D/g, "").slice(0, 6);
-    });
-  });
-
-  btn.addEventListener("click", async () => {
-    const novaSenha = document.getElementById("novaSenhaPrimeiroAcesso").value.trim();
-    const confirmacao = document.getElementById("confirmarSenhaPrimeiroAcesso").value.trim();
-    const msg = document.getElementById("msgPrimeiraSenha");
-
-    if (!/^\d{6}$/.test(novaSenha)) {
-      msg.textContent = "A senha deve ter exatamente 6 números, sem letras ou símbolos.";
-      msg.classList.add("erro");
-      return;
-    }
-    if (novaSenha !== confirmacao) {
-      msg.textContent = "As senhas digitadas não coincidem.";
-      msg.classList.add("erro");
-      return;
-    }
-
-    btn.disabled = true;
-    msg.classList.remove("erro");
-    msg.textContent = "Salvando...";
-
-    const { error: errSenha } = await supabaseClient.auth.updateUser({ password: novaSenha });
-
-    if (errSenha) {
-      console.error("Erro ao atualizar senha:", errSenha);
-      msg.textContent = "Não foi possível atualizar a senha. Tente novamente.";
-      msg.classList.add("erro");
-      btn.disabled = false;
-      return;
-    }
-
-    const { error: errUsuario } = await supabaseClient
-      .from("usuarios")
-      .update({ senha_alterada: true })
-      .eq("email", currentUserEmail);
-
-    if (errUsuario) {
-      // a senha já foi trocada no Auth; um erro aqui só afeta a marcação de "já trocou",
-      // então deixamos o usuário seguir mesmo assim
-      console.error("Erro ao marcar senha como trocada:", errUsuario);
-    }
-
-    msg.classList.remove("erro");
-    msg.textContent = "Senha atualizada com sucesso!";
-
-    setTimeout(() => {
-      const modal = document.getElementById("modalPrimeiraSenha");
-      if (modal) modal.hidden = true;
-      document.getElementById("novaSenhaPrimeiroAcesso").value = "";
-      document.getElementById("confirmarSenhaPrimeiroAcesso").value = "";
-      msg.textContent = "";
-      msg.classList.remove("erro");
-      btn.disabled = false;
-    }, 1000);
-  });
-}
-
 function prepararModalChamado() {
   const btnChamado = document.getElementById("btnChamado");
   const modal = document.getElementById("modalChamado");
@@ -1459,7 +1373,7 @@ async function atualizarStatusChamado(id, status) {
 /* =====================================================
    PAINEL ADMIN — GERENCIAR USUÁRIOS
    Usa funções (RPC) no Supabase que só administradores podem chamar:
-   admin_listar_usuarios / admin_definir_tipo_usuario / admin_resetar_senha
+   admin_listar_usuarios / admin_definir_tipo_usuario
 ===================================================== */
 async function carregarUsuarios() {
   const lista = document.getElementById("listaUsuarios");
@@ -1469,7 +1383,7 @@ async function carregarUsuarios() {
 
   if (error) {
     console.error("Erro ao carregar usuários:", error);
-    lista.innerHTML = '<p class="msg-feedback erro">Não foi possível carregar os usuários. Verifique se as funções admin_listar_usuarios / admin_definir_tipo_usuario / admin_resetar_senha foram criadas no Supabase.</p>';
+    lista.innerHTML = '<p class="msg-feedback erro">Não foi possível carregar os usuários. Verifique se as funções admin_listar_usuarios / admin_definir_tipo_usuario foram criadas no Supabase.</p>';
     return;
   }
 
@@ -1496,10 +1410,7 @@ function renderizarUsuarios(usuarios) {
 
       const info = document.createElement("div");
       info.className = "chamado-info";
-      info.innerHTML = `
-        <p><strong>${escapeHtml(u.email)}</strong></p>
-        <p class="chamado-data">${u.senha_alterada ? "Já trocou a senha padrão" : "Ainda está com a senha padrão (123456)"}</p>
-      `;
+      info.innerHTML = `<p><strong>${escapeHtml(u.email)}</strong></p>`;
 
       const acoes = document.createElement("div");
       acoes.className = "chamado-acoes";
@@ -1518,13 +1429,6 @@ function renderizarUsuarios(usuarios) {
       });
       select.addEventListener("change", () => alterarTipoUsuario(u.email, select.value));
       acoes.appendChild(select);
-
-      const btnResetar = document.createElement("button");
-      btnResetar.type = "button";
-      btnResetar.className = "btn-vermelho btn-small";
-      btnResetar.textContent = "Resetar senha (123456)";
-      btnResetar.onclick = () => resetarSenhaUsuario(u.email);
-      acoes.appendChild(btnResetar);
 
       item.appendChild(info);
       item.appendChild(acoes);
@@ -1560,24 +1464,6 @@ async function alterarTipoUsuario(email, novoTipo) {
     aplicarVisibilidadeAdmin();
   }
 
-  await carregarUsuarios();
-}
-
-/* Reseta a senha de um usuário para 123456 via função RPC restrita a admins,
-   e força a troca no próximo login dele (senha_alterada = false) */
-async function resetarSenhaUsuario(email) {
-  const confirmou = confirm(`Resetar a senha de "${email}" para 123456?\n\nA pessoa será obrigada a trocar essa senha assim que fizer login.`);
-  if (!confirmou) return;
-
-  const { error } = await supabaseClient.rpc("admin_resetar_senha", { p_email: email });
-
-  if (error) {
-    console.error("Erro ao resetar senha:", error);
-    alert("Não foi possível resetar a senha deste usuário.");
-    return;
-  }
-
-  alert(`Senha de "${email}" resetada para 123456.`);
   await carregarUsuarios();
 }
 
