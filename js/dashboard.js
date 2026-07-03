@@ -82,7 +82,7 @@ function exibirUsuarioLogado(email) {
   if (!el) return;
 
   const nomeCurto = (email || "").split("@")[0] || "";
-  el.textContent = nomeCurto ? `Logado como: ${nomeCurto}` : "";
+  el.textContent = nomeCurto ? `Usuário: ${nomeCurto}` : "";
 }
 
 function aplicarVisibilidadeAdmin() {
