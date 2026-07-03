@@ -563,6 +563,23 @@ details.painel-admin[open] summary h2::before {
   font-size: 13px;
 }
 
+/* Lista de usuários (painel Gerenciar usuários) — reaproveita o layout dos chamados */
+.lista-usuarios {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.select-tipo-usuario {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background-color: #fff;
+}
+
 /* Destaque visual dos campos que o chamado em revisão está pedindo para alterar */
 .campo-alterando input,
 .campo-alterando textarea,
