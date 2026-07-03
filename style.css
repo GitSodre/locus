@@ -227,7 +227,7 @@ hr {
 /* Nome do usuário logado, exibido à esquerda do botão Sair */
 .usuario-logado {
   position: absolute;
-  top: 0;
+  top: 8px;
   right: 65px;
   height: 30px;
   display: flex;
