@@ -20,6 +20,8 @@ let currentUserName = "";
 let convenioAtual = null;       // convênio selecionado nos filtros
 let acessosExtraAtual = [];     // acessos adicionais do convênio selecionado
 let chamadoEmRevisao = null;    // id do chamado sendo revisado no formulário do admin
+let modoEdicaoConvenio = false; // true = campos de edição do convênio destravados
+let modoCriacaoAtivo = false;   // true = campos de criação de novo convênio destravados
 
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
@@ -319,22 +321,26 @@ function renderizarAcessosExtraForm() {
 
   lista.innerHTML = "";
 
+  const editavel = !!(convenioAtual && modoEdicaoConvenio);
+
   acessosExtraAtual.forEach((a, idx) => {
     if (a._removido) return;
 
     const linha = document.createElement("div");
     linha.className = "acesso-extra-linha";
+    const atributoDisabled = editavel ? "" : "disabled";
     linha.innerHTML = `
-      <input type="text" class="ae-rotulo" placeholder="Rótulo (ex: Acesso financeiro)" value="${escapeAttr(a.rotulo || "")}">
-      <input type="text" class="ae-link" placeholder="Link" value="${escapeAttr(a.link || "")}">
-      <input type="text" class="ae-login" placeholder="Login" value="${escapeAttr(a.login || "")}">
-      <input type="text" class="ae-senha" placeholder="Senha" value="${escapeAttr(a.senha || "")}">
+      <input type="text" class="ae-rotulo" placeholder="Rótulo (ex: Acesso financeiro)" value="${escapeAttr(a.rotulo || "")}" ${atributoDisabled}>
+      <input type="text" class="ae-link" placeholder="Link" value="${escapeAttr(a.link || "")}" ${atributoDisabled}>
+      <input type="text" class="ae-login" placeholder="Login" value="${escapeAttr(a.login || "")}" ${atributoDisabled}>
+      <input type="text" class="ae-senha" placeholder="Senha" value="${escapeAttr(a.senha || "")}" ${atributoDisabled}>
     `;
 
     const btnRemover = document.createElement("button");
     btnRemover.type = "button";
     btnRemover.className = "btn-vermelho btn-small";
     btnRemover.textContent = "Remover";
+    btnRemover.disabled = !editavel;
     btnRemover.onclick = () => {
       if (a.id) {
         a._removido = true;
@@ -467,6 +473,11 @@ function prepararPainelAdmin() {
   document.getElementById("btnSalvarConvenio")?.addEventListener("click", salvarConvenio);
   document.getElementById("btnCancelarRevisao")?.addEventListener("click", cancelarRevisao);
   document.getElementById("btnCriarConvenio")?.addEventListener("click", criarConvenio);
+  document.getElementById("btnCancelarEdicao")?.addEventListener("click", cancelarEdicaoConvenio);
+  document.getElementById("btnExcluirConvenio")?.addEventListener("click", excluirConvenio);
+  document.getElementById("btnCancelarNovoConvenio")?.addEventListener("click", cancelarNovoConvenio);
+  document.getElementById("btnEditarConvenio")?.addEventListener("click", habilitarEdicaoConvenio);
+  document.getElementById("btnIniciarCriacao")?.addEventListener("click", iniciarCriacaoConvenio);
 
   document.getElementById("btnAddAcesso")?.addEventListener("click", () => {
     acessosExtraAtual.push({ id: null, rotulo: "", link: "", login: "", senha: "", ordem: acessosExtraAtual.length, _removido: false });
@@ -476,6 +487,10 @@ function prepararPainelAdmin() {
   // Nome do convênio sempre em maiúsculas (criação e edição), sem perder a posição do cursor
   forcarMaiusculas("novoConvenioNome");
   forcarMaiusculas("editConvenioNome");
+
+  // Garante que os dois formulários comecem travados (só liberam ao clicar em "Editar"/"Começar a criar")
+  aplicarModoEdicaoConvenio();
+  aplicarModoCriacao();
 }
 
 /* Converte o valor do campo para maiúsculas a cada digitação, mantendo o cursor no lugar */
@@ -493,6 +508,48 @@ function forcarMaiusculas(inputId) {
 /* =====================================================
    PAINEL ADMIN — CRIAR NOVO CONVÊNIO
 ===================================================== */
+
+/* Cancela a criação em andamento, limpando todos os campos do formulário */
+const CAMPOS_CRIACAO_IDS = ["novoEmpresa", "novoConvenioNome", "novoRotulo", "novoLink", "novoLogin", "novoSenha", "novoObservacao"];
+
+/* Aplica o estado visual/de bloqueio do painel de criação, conforme modoCriacaoAtivo */
+function aplicarModoCriacao() {
+  CAMPOS_CRIACAO_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !modoCriacaoAtivo;
+  });
+
+  const btnIniciar = document.getElementById("btnIniciarCriacao");
+  if (btnIniciar) btnIniciar.hidden = modoCriacaoAtivo;
+
+  const btnCriar = document.getElementById("btnCriarConvenio");
+  if (btnCriar) { btnCriar.hidden = !modoCriacaoAtivo; btnCriar.disabled = !modoCriacaoAtivo; }
+
+  const btnCancelar = document.getElementById("btnCancelarNovoConvenio");
+  if (btnCancelar) { btnCancelar.hidden = !modoCriacaoAtivo; btnCancelar.disabled = !modoCriacaoAtivo; }
+}
+
+/* Libera os campos do formulário de criação (botão "Começar a criar convênio") */
+function iniciarCriacaoConvenio() {
+  modoCriacaoAtivo = true;
+  aplicarModoCriacao();
+  document.getElementById("novoEmpresa")?.focus();
+}
+
+/* Cancela a criação em andamento, limpando e travando de novo os campos do formulário */
+function cancelarNovoConvenio() {
+  CAMPOS_CRIACAO_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+
+  const msg = document.getElementById("msgCriarConvenio");
+  if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
+
+  modoCriacaoAtivo = false;
+  aplicarModoCriacao();
+}
+
 async function criarConvenio() {
   const msg = document.getElementById("msgCriarConvenio");
 
@@ -546,10 +603,12 @@ async function criarConvenio() {
   msg.classList.remove("erro");
   msg.textContent = "Convênio criado com sucesso!";
 
-  ["novoEmpresa", "novoConvenioNome", "novoRotulo", "novoLink", "novoLogin", "novoSenha"].forEach(id => {
-    document.getElementById(id).value = "";
+  CAMPOS_CRIACAO_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
   });
-  document.getElementById("novoObservacao").value = "";
+  modoCriacaoAtivo = false;
+  aplicarModoCriacao();
 
   // atualiza os selects e já abre o convênio recém-criado para conferência
   carregarEmpresas();
@@ -586,7 +645,53 @@ function ajustarSelectEmpresa(selectEl, valor) {
 
 const CAMPOS_EDICAO_IDS = ["editEmpresa", "editConvenioNome", "editRotulo", "editLink", "editLogin", "editSenha", "editObservacao"];
 
-function preencherFormularioEdicao(c) {
+/* Aplica o estado visual/de bloqueio do painel de edição, conforme
+   modoEdicaoConvenio (destravado) e a existência de um convênio selecionado. */
+function aplicarModoEdicaoConvenio() {
+  const temConvenio = !!convenioAtual;
+  const editando = temConvenio && modoEdicaoConvenio;
+
+  CAMPOS_EDICAO_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !editando;
+  });
+
+  const btnAddAcesso = document.getElementById("btnAddAcesso");
+  if (btnAddAcesso) btnAddAcesso.disabled = !editando;
+
+  const btnEditar = document.getElementById("btnEditarConvenio");
+  if (btnEditar) {
+    btnEditar.hidden = editando;
+    btnEditar.disabled = !temConvenio;
+  }
+
+  const btnSalvar = document.getElementById("btnSalvarConvenio");
+  if (btnSalvar) {
+    btnSalvar.hidden = !editando;
+    btnSalvar.disabled = !editando;
+  }
+
+  const btnCancelar = document.getElementById("btnCancelarEdicao");
+  if (btnCancelar) {
+    btnCancelar.hidden = !editando;
+    btnCancelar.disabled = !editando;
+  }
+
+  const btnExcluir = document.getElementById("btnExcluirConvenio");
+  if (btnExcluir) btnExcluir.disabled = !temConvenio;
+
+  // Reflete o mesmo estado (travado/editável) nos acessos adicionais
+  if (isAdmin) renderizarAcessosExtraForm();
+}
+
+/* Destrava o formulário do convênio selecionado para edição (botão "Editar convênio") */
+function habilitarEdicaoConvenio() {
+  if (!convenioAtual) return;
+  modoEdicaoConvenio = true;
+  aplicarModoEdicaoConvenio();
+}
+
+function preencherFormularioEdicao(c, { iniciarEditando = false } = {}) {
   const editLink = document.getElementById("editLink");
   if (!editLink) return;
 
@@ -599,11 +704,9 @@ function preencherFormularioEdicao(c) {
   document.getElementById("editLogin").value = c.login || "";
   document.getElementById("editSenha").value = c.senha || "";
   document.getElementById("editObservacao").value = c.observacao || "";
-  document.getElementById("btnSalvarConvenio").disabled = false;
 
-  CAMPOS_EDICAO_IDS.forEach(id => { document.getElementById(id).disabled = false; });
-  const btnAddAcesso = document.getElementById("btnAddAcesso");
-  if (btnAddAcesso) btnAddAcesso.disabled = false;
+  modoEdicaoConvenio = iniciarEditando;
+  aplicarModoEdicaoConvenio();
 
   const msg = document.getElementById("msgSalvarConvenio");
   if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
@@ -620,17 +723,91 @@ function limparFormularioEdicao() {
   document.getElementById("editLogin").value = "";
   document.getElementById("editSenha").value = "";
   document.getElementById("editObservacao").value = "";
-  document.getElementById("btnSalvarConvenio").disabled = true;
 
-  CAMPOS_EDICAO_IDS.forEach(id => { document.getElementById(id).disabled = true; });
-  const btnAddAcesso = document.getElementById("btnAddAcesso");
-  if (btnAddAcesso) btnAddAcesso.disabled = true;
+  modoEdicaoConvenio = false;
+  aplicarModoEdicaoConvenio();
 
   const listaAcessos = document.getElementById("listaAcessosExtra");
   if (listaAcessos) listaAcessos.innerHTML = "";
 
   const msg = document.getElementById("msgSalvarConvenio");
   if (msg) { msg.textContent = ""; msg.classList.remove("erro"); }
+}
+
+/* Cancela as alterações feitas no formulário (que ainda não foram salvas) e
+   volta os campos para os valores originais do convênio, inclusive nos
+   acessos adicionais (recarrega do banco, descartando edições locais). */
+async function cancelarEdicaoConvenio() {
+  if (!isAdmin || !convenioAtual) return;
+
+  // cancelarRevisao() já reaplica os valores originais do convenioAtual no
+  // formulário e limpa qualquer destaque de revisão de chamado em aberto
+  cancelarRevisao();
+
+  // descarta edições não salvas feitas nos acessos adicionais
+  await carregarAcessosExtra(convenioAtual.id);
+
+  const msg = document.getElementById("msgSalvarConvenio");
+  if (msg) {
+    msg.classList.remove("erro");
+    msg.textContent = "Alterações descartadas.";
+  }
+}
+
+/* Exclui definitivamente o convênio selecionado (e seus acessos adicionais) */
+async function excluirConvenio() {
+  if (!isAdmin || !convenioAtual) return;
+
+  const nomeConvenio = convenioAtual.convenio;
+  const empresaConvenio = convenioAtual.empresa;
+  const idConvenio = convenioAtual.id;
+
+  const confirmou = confirm(
+    `Tem certeza que deseja excluir o convênio "${nomeConvenio}" (${empresaConvenio})?\n\n` +
+    `Essa ação não pode ser desfeita e também vai remover os acessos adicionais cadastrados nele.`
+  );
+  if (!confirmou) return;
+
+  const msg = document.getElementById("msgSalvarConvenio");
+
+  // remove primeiro os acessos adicionais, que dependem do convênio (chave estrangeira)
+  const { error: errAcessos } = await supabaseClient
+    .from("convenio_acessos")
+    .delete()
+    .eq("convenio_id", idConvenio);
+
+  if (errAcessos) {
+    console.error("Erro ao excluir acessos adicionais do convênio:", errAcessos);
+    msg.textContent = (errAcessos.code === "23503")
+      ? "Não foi possível excluir: existem chamados vinculados a acessos adicionais deste convênio. Resolva ou exclua esses chamados antes."
+      : "Erro ao excluir os acessos adicionais deste convênio.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("convenios")
+    .delete()
+    .eq("id", idConvenio);
+
+  if (error) {
+    console.error("Erro ao excluir convênio:", error);
+    msg.textContent = (error.code === "23503")
+      ? "Não foi possível excluir: existem chamados vinculados a este convênio. Resolva ou exclua esses chamados antes."
+      : "Erro ao excluir o convênio.";
+    msg.classList.add("erro");
+    return;
+  }
+
+  conveniosCache = conveniosCache.filter(c => c.id !== idConvenio);
+
+  limparDados();
+  document.getElementById("selectEmpresa").value = "";
+  carregarEmpresas();
+  document.getElementById("selectConvenio").innerHTML = '<option value="">Selecione o convênio</option>';
+  document.getElementById("selectConvenio").disabled = true;
+
+  alert(`Convênio "${nomeConvenio}" excluído com sucesso.`);
 }
 
 async function salvarConvenio() {
@@ -720,6 +897,10 @@ async function salvarConvenio() {
     await atualizarStatusChamado(idParaConcluir, "concluido");
     msg.textContent = "Alterações salvas e chamado concluído.";
   }
+
+  // Depois de salvar, o formulário volta ao estado travado (view), até clicar em "Editar" de novo
+  modoEdicaoConvenio = false;
+  aplicarModoEdicaoConvenio();
 }
 
 /* =====================================================
@@ -1019,6 +1200,10 @@ function revisarChamado(c) {
   selectConvenio.value = convenio.convenio;
 
   selecionarConvenio(convenio).then(() => {
+    // Atender um chamado já abre o formulário destravado para edição direta
+    modoEdicaoConvenio = true;
+    aplicarModoEdicaoConvenio();
+
     limparDestaquesRevisao();
     const camposAlterados = [];
 
