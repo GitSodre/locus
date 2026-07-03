@@ -63,6 +63,8 @@ async function verificarPapel() {
   currentUserEmail = user?.email || "";
   currentUserName = user?.user_metadata?.full_name || currentUserEmail;
 
+  exibirUsuarioLogado(currentUserEmail);
+
   const { data: userRow, error } = await supabaseClient
     .from("usuarios")
     .select("tipo")
@@ -73,6 +75,14 @@ async function verificarPapel() {
 
   isAdmin = (userRow?.tipo || "").toString().toLowerCase() === "admin";
   aplicarVisibilidadeAdmin();
+}
+
+function exibirUsuarioLogado(email) {
+  const el = document.getElementById("usuarioLogado");
+  if (!el) return;
+
+  const nomeCurto = (email || "").split("@")[0] || "";
+  el.textContent = nomeCurto ? `Logado como: ${nomeCurto}` : "";
 }
 
 function aplicarVisibilidadeAdmin() {
