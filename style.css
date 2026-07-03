@@ -149,6 +149,13 @@ hr {
   margin-top: 25px;
 }
 
+/* Variante centralizada, usada quando o botão não deve ocupar a largura toda
+   (ex: botão "Solicitar alteração de acesso" do topo, do mesmo tamanho dos
+   botões "Solicitar alteração deste acesso" dos acessos adicionais) */
+.caixa-botoes-centro {
+  text-align: center;
+}
+
 /* BOTÃO VERDE */
 .btn-verde {
   padding: 12px;
@@ -413,9 +420,14 @@ hr {
 }
 
 .chamado-acesso-titulo {
-  color: #93c5fd !important;
+  color: #0c143a !important;
+  background-color: #93c5fd;
+  display: inline-block;
   font-weight: bold;
-  font-size: 13px !important;
+  font-size: 12px !important;
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin: 4px 0 6px;
 }
 
 /* Mensagens de retorno (sucesso/erro) */
@@ -505,11 +517,26 @@ details.painel-admin[open] summary h2::before {
 }
 .status-badge.status-aberto { background-color: #f59e0b; }
 .status-badge.status-concluido { background-color: #16a34a; }
+.status-badge.status-recusado { background-color: #6b7280; }
 
 .btn-small {
   width: auto;
   padding: 6px 14px;
   font-size: 13px;
+}
+
+/* Destaque visual dos campos que o chamado em revisão está pedindo para alterar */
+.campo-alterando input,
+.campo-alterando textarea,
+.acesso-extra-linha input.ae-alterando {
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+}
+.campo-alterando label::after {
+  content: " (chamado)";
+  color: #f59e0b;
+  font-weight: normal;
+  font-size: 12px;
 }
 
 /* =================================================
