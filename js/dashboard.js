@@ -683,7 +683,10 @@ function aplicarModoEdicaoConvenio() {
   }
 
   const btnExcluir = document.getElementById("btnExcluirConvenio");
-  if (btnExcluir) btnExcluir.disabled = !temConvenio;
+  if (btnExcluir) {
+    btnExcluir.hidden = !editando;
+    btnExcluir.disabled = !editando;
+  }
 
   // Reflete o mesmo estado (travado/editável) nos acessos adicionais
   if (isAdmin) renderizarAcessosExtraForm();
