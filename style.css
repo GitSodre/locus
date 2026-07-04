@@ -28,7 +28,9 @@ body {
 .login-card h1 {
   color: white;
   font-size: 48px;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  font-family: 'Baloo 2', 'Gill Sans', Calibri, sans-serif;
+  font-weight: 800;
+  letter-spacing: -1px;
   margin-bottom: 20px;
   margin-top: 5px;
 }
@@ -278,7 +280,9 @@ hr {
 
 .tituloden {
   font-size: 40px;
-  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  font-family: 'Baloo 2', 'Gill Sans', Calibri, sans-serif;
+  font-weight: 800;
+  letter-spacing: -1px;
   text-shadow:  0 0 10px  rgb(0, 0, 0, 90);
 }
 
