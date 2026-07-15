@@ -26,7 +26,7 @@ body {
 }
 
 .login-card {
-  background-color: #0206173b;
+  background-color: #0a1132;
   padding: 30px 40px;
   border-radius: 8px;
   box-shadow: 0 0 40px rgba(0,0,0,0.6);
@@ -106,7 +106,7 @@ body {
 .dashboard-container {
   max-width: 900px;
   margin: auto;
-  background-color: #0206173b;
+  background-color: #0a1132;
   padding: 30px;
   padding-top: 15px;;
   box-shadow: 0 0 40px rgba(0,0,0,0.6);
