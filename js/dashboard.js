@@ -333,13 +333,26 @@ function renderizarAcessosExtraForm() {
 
     const linha = document.createElement("div");
     linha.className = "acesso-extra-linha";
-    const atributoDisabled = editavel ? "" : "disabled";
-    linha.innerHTML = `
-      <input type="text" class="ae-rotulo" placeholder="Rótulo (ex: Acesso financeiro)" value="${escapeAttr(a.rotulo || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-link" placeholder="Link" value="${escapeAttr(a.link || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-login" placeholder="Login" value="${escapeAttr(a.login || "")}" ${atributoDisabled}>
-      <input type="text" class="ae-senha" placeholder="Senha" value="${escapeAttr(a.senha || "")}" ${atributoDisabled}>
-    `;
+
+    // Os inputs são criados via DOM e preenchidos por .value, que nunca interpreta
+    // HTML. Isso dispensa qualquer função de escape manual.
+    const CAMPOS_ACESSO = [
+      { chave: "rotulo", classe: "ae-rotulo", placeholder: "Rótulo (ex: Acesso financeiro)" },
+      { chave: "link",   classe: "ae-link",   placeholder: "Link" },
+      { chave: "login",  classe: "ae-login",  placeholder: "Login" },
+      { chave: "senha",  classe: "ae-senha",  placeholder: "Senha" }
+    ];
+
+    CAMPOS_ACESSO.forEach(({ chave, classe, placeholder }) => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = classe;
+      input.placeholder = placeholder;
+      input.value = a[chave] || "";
+      input.disabled = !editavel;
+      input.addEventListener("input", e => { a[chave] = e.target.value; });
+      linha.appendChild(input);
+    });
 
     const btnRemover = document.createElement("button");
     btnRemover.type = "button";
@@ -356,17 +369,30 @@ function renderizarAcessosExtraForm() {
     };
     linha.appendChild(btnRemover);
 
-    linha.querySelector(".ae-rotulo").addEventListener("input", e => { a.rotulo = e.target.value; });
-    linha.querySelector(".ae-link").addEventListener("input", e => { a.link = e.target.value; });
-    linha.querySelector(".ae-login").addEventListener("input", e => { a.login = e.target.value; });
-    linha.querySelector(".ae-senha").addEventListener("input", e => { a.senha = e.target.value; });
-
     lista.appendChild(linha);
   });
 }
 
-function escapeAttr(str) {
-  return (str ?? "").toString().replaceAll('"', "&quot;");
+/* =====================================================
+   HELPERS DE DOM
+   Constroem elementos em vez de montar HTML por string.
+   Texto entra sempre por textContent, que o navegador trata
+   como texto puro — não há o que escapar.
+===================================================== */
+function criarP(className, ...conteudo) {
+  const p = document.createElement("p");
+  if (className) p.className = className;
+  conteudo.forEach(item => {
+    if (item === null || item === undefined) return;
+    p.appendChild(item instanceof Node ? item : document.createTextNode(String(item)));
+  });
+  return p;
+}
+
+function criarForte(texto) {
+  const strong = document.createElement("strong");
+  strong.textContent = texto ?? "";
+  return strong;
 }
 
 async function salvarAcessosExtra(convenioId) {
@@ -1111,12 +1137,14 @@ function renderizarChamados(chamados, acessosMap) {
 
     const diff = montarDiffChamado(c, referencia);
 
-    info.innerHTML = `
-      <p><strong>${escapeHtml(c.usuario_nome || c.usuario)}</strong> — ${escapeHtml(c.empresa)} / ${escapeHtml(c.convenio)}</p>
-      <p class="chamado-acesso-titulo">${escapeHtml(tituloAcesso)}</p>
-      <p class="chamado-diff">${diff || "Nenhuma alteração especificada."}</p>
-      <p class="chamado-data">Aberto em: ${formatarData(c.data_abertura)}</p>
-    `;
+    info.appendChild(criarP(
+      null,
+      criarForte(c.usuario_nome || c.usuario),
+      ` — ${c.empresa} / ${c.convenio}`
+    ));
+    info.appendChild(criarP("chamado-acesso-titulo", tituloAcesso));
+    info.appendChild(criarP("chamado-diff", diff));
+    info.appendChild(criarP("chamado-data", `Aberto em: ${formatarData(c.data_abertura)}`));
 
     const acoes = document.createElement("div");
     acoes.className = "chamado-acoes";
@@ -1153,12 +1181,27 @@ function renderizarChamados(chamados, acessosMap) {
   });
 }
 
+/* Devolve um fragmento de DOM (não uma string de HTML) com o de/para do chamado */
 function montarDiffChamado(c, convenioRef) {
   const linhas = [];
-  if (c.novo_login) linhas.push(`Login: ${escapeHtml(convenioRef?.login || "—")} → <strong>${escapeHtml(c.novo_login)}</strong>`);
-  if (c.nova_senha) linhas.push(`Senha: ${escapeHtml(convenioRef?.senha || "—")} → <strong>${escapeHtml(c.nova_senha)}</strong>`);
-  if (c.novo_link)  linhas.push(`Link: ${escapeHtml(convenioRef?.link || "—")} → <strong>${escapeHtml(c.novo_link)}</strong>`);
-  return linhas.join("<br>");
+  if (c.novo_login) linhas.push(["Login", convenioRef?.login, c.novo_login]);
+  if (c.nova_senha) linhas.push(["Senha", convenioRef?.senha, c.nova_senha]);
+  if (c.novo_link)  linhas.push(["Link",  convenioRef?.link,  c.novo_link]);
+
+  const frag = document.createDocumentFragment();
+
+  if (linhas.length === 0) {
+    frag.appendChild(document.createTextNode("Nenhuma alteração especificada."));
+    return frag;
+  }
+
+  linhas.forEach(([rotulo, atual, novo], i) => {
+    if (i > 0) frag.appendChild(document.createElement("br"));
+    frag.appendChild(document.createTextNode(`${rotulo}: ${atual || "—"} → `));
+    frag.appendChild(criarForte(novo));
+  });
+
+  return frag;
 }
 
 function normalizarStatus(status) {
@@ -1181,13 +1224,6 @@ function formatarData(iso) {
   } catch {
     return "—";
   }
-}
-
-function escapeHtml(str) {
-  return (str ?? "").toString()
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
 }
 
 /* Revisar no formulário: seleciona o convênio e pré-preenche com o que foi pedido */
@@ -1413,7 +1449,7 @@ function renderizarUsuarios(usuarios) {
 
       const info = document.createElement("div");
       info.className = "chamado-info";
-      info.innerHTML = `<p><strong>${escapeHtml(u.email)}</strong></p>`;
+      info.appendChild(criarP(null, criarForte(u.email)));
 
       const acoes = document.createElement("div");
       acoes.className = "chamado-acoes";
