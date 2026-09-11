@@ -749,3 +749,29 @@ details.painel-admin[open] summary h2::before {
   border: 1px solid #f59e0b;
   color: #fcd34d;
 }
+
+/* Selo de tipo do chamado (alteração / convênio novo / acesso adicional) */
+.chamado-tipo-selo {
+  display: inline-block;
+  font-size: 11px !important;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 2px 0 4px !important;
+}
+.chamado-tipo-selo.tipo-edicao        { background-color: #334155; color: #cbd5e1; }
+.chamado-tipo-selo.tipo-novo_convenio { background-color: #166534; color: #bbf7d0; }
+.chamado-tipo-selo.tipo-novo_acesso   { background-color: #1e40af; color: #bfdbfe; }
+
+/* Justificativa enviada pelo solicitante e motivo da recusa */
+.chamado-justificativa {
+  color: #cbd5e1 !important;
+  font-style: italic;
+  font-size: 13px !important;
+}
+.chamado-recusa {
+  color: #fca5a5 !important;
+  font-size: 13px !important;
+}
