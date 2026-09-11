@@ -287,9 +287,9 @@ hr {
 }
 
 .tituloden {
-  font-size: 90px;
+  font-size: 40px;
   font-family: 'Baloo 2', 'Gill Sans', Calibri, sans-serif;
-  font-weight: 800;
+  font-weight: 16000;
   letter-spacing: -1px;
   text-shadow:  0 0 10px  rgb(0, 0, 0, 90);
 }
