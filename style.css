@@ -672,3 +672,80 @@ details.painel-admin[open] summary h2::before {
   margin-top: 20px;
 }
 .modal-botoes button { flex: 1; width: auto; }
+
+/* =================================================
+   MODAL — CADASTRAR ACESSO EXISTENTE
+================================================= */
+
+/* Botão de abertura, abaixo do card de dados */
+.caixa-cadastro-usuario {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cadastro-dica {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* O modal de cadastro tem mais campos que o de alteração */
+.modal-card-largo {
+  width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-campo label {
+  display: block;
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.obrigatorio { color: #f87171; }
+
+/* Campos de texto e textarea dentro do modal */
+.modal-campo select,
+.modal-campo textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.modal-campo select { cursor: pointer; }
+.modal-campo textarea { resize: vertical; }
+
+/* O campo de convênio aparece sempre em maiúsculas.
+   A conversão real do valor é feita no JS, na hora de salvar —
+   fazer isso a cada tecla jogaria o cursor para o fim da linha. */
+.campo-maiusculo { text-transform: uppercase; }
+
+/* Aviso de detecção: diz se é convênio novo ou acesso adicional */
+.cad-deteccao {
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: -6px 0 14px;
+}
+.cad-deteccao[hidden] { display: none !important; }
+
+.cad-deteccao.cad-novo {
+  background-color: rgba(22, 163, 74, 0.12);
+  border: 1px solid #16a34a;
+  color: #86efac;
+}
+.cad-deteccao.cad-existente {
+  background-color: rgba(59, 130, 246, 0.12);
+  border: 1px solid #3b82f6;
+  color: #93c5fd;
+}
+.cad-deteccao.cad-duplicado {
+  background-color: rgba(245, 158, 11, 0.12);
+  border: 1px solid #f59e0b;
+  color: #fcd34d;
+}
