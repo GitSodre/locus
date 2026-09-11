@@ -584,6 +584,8 @@ function cancelarNovoConvenio() {
 
 async function criarConvenio() {
   const msg = document.getElementById("msgCriarConvenio");
+  // guardado antes de cancelarRevisao(), que zera a variável global
+  const idChamadoRevisao = chamadoEmRevisao;
 
   const empresa    = document.getElementById("novoEmpresa").value.trim();
   const convenio   = document.getElementById("novoConvenioNome").value.trim().toUpperCase();
@@ -651,6 +653,13 @@ async function criarConvenio() {
 
   cancelarRevisao();
   selecionarConvenio(data);
+
+  if (idChamadoRevisao) {
+    chamadoEmRevisao = null;
+    await atualizarStatusChamado(idChamadoRevisao, "concluido");
+    msg.classList.remove("erro");
+    msg.textContent = "Convênio criado e chamado concluído!";
+  }
 }
 
 /* Seleciona a empresa no <select>; se o valor salvo não bater com nenhuma
@@ -1125,9 +1134,13 @@ function renderizarChamados(chamados, acessosMap) {
       || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
     const referencia = c.acesso_id ? acessosMap[c.acesso_id] : convenioRef;
-    const tituloAcesso = c.acesso_id
-      ? `Acesso: ${c.acesso_rotulo || "adicional"}`
-      : (convenioRef?.rotulo ? `Acesso: ${convenioRef.rotulo}` : "Acesso principal");
+    const tipoChamado = c.tipo || "edicao";
+
+    const tituloAcesso = tipoChamado !== "edicao"
+      ? (c.novo_rotulo ? `Acesso: ${c.novo_rotulo}` : "Acesso principal")
+      : (c.acesso_id
+          ? `Acesso: ${c.acesso_rotulo || "adicional"}`
+          : (convenioRef?.rotulo ? `Acesso: ${convenioRef.rotulo}` : "Acesso principal"));
 
     const item = document.createElement("div");
     item.className = "chamado-item";
@@ -1142,8 +1155,19 @@ function renderizarChamados(chamados, acessosMap) {
       criarForte(c.usuario_nome || c.usuario),
       ` — ${c.empresa} / ${c.convenio}`
     ));
+    const selo = criarP("chamado-tipo-selo tipo-" + tipoChamado, rotuloTipo(tipoChamado));
+    info.appendChild(selo);
+
     info.appendChild(criarP("chamado-acesso-titulo", tituloAcesso));
     info.appendChild(criarP("chamado-diff", diff));
+
+    if (c.justificativa) {
+      info.appendChild(criarP("chamado-justificativa", "Justificativa: ", c.justificativa));
+    }
+    if (c.motivo_recusa) {
+      info.appendChild(criarP("chamado-recusa", "Motivo da recusa: ", c.motivo_recusa));
+    }
+
     info.appendChild(criarP("chamado-data", `Aberto em: ${formatarData(c.data_abertura)}`));
 
     const acoes = document.createElement("div");
@@ -1181,8 +1205,35 @@ function renderizarChamados(chamados, acessosMap) {
   });
 }
 
-/* Devolve um fragmento de DOM (não uma string de HTML) com o de/para do chamado */
+function rotuloTipo(tipo) {
+  if (tipo === "novo_convenio") return "Convênio novo";
+  if (tipo === "novo_acesso")   return "Acesso adicional";
+  return "Alteração";
+}
+
+/* Devolve um fragmento de DOM (não uma string de HTML) com o conteúdo do chamado.
+   Nos chamados de criação não existe "valor atual", então lista o que foi proposto. */
 function montarDiffChamado(c, convenioRef) {
+  if ((c.tipo || "edicao") !== "edicao") {
+    const propostos = [];
+    if (c.novo_link)       propostos.push(["Link", c.novo_link]);
+    if (c.novo_login)      propostos.push(["Login", c.novo_login]);
+    if (c.nova_senha)      propostos.push(["Senha", c.nova_senha]);
+    if (c.nova_observacao) propostos.push(["Observação", c.nova_observacao]);
+
+    const fragNovo = document.createDocumentFragment();
+    if (propostos.length === 0) {
+      fragNovo.appendChild(document.createTextNode("Nenhum dado informado."));
+      return fragNovo;
+    }
+    propostos.forEach(([rotulo, valor], i) => {
+      if (i > 0) fragNovo.appendChild(document.createElement("br"));
+      fragNovo.appendChild(document.createTextNode(`${rotulo}: `));
+      fragNovo.appendChild(criarForte(valor));
+    });
+    return fragNovo;
+  }
+
   const linhas = [];
   if (c.novo_login) linhas.push(["Login", convenioRef?.login, c.novo_login]);
   if (c.nova_senha) linhas.push(["Senha", convenioRef?.senha, c.nova_senha]);
@@ -1228,6 +1279,10 @@ function formatarData(iso) {
 
 /* Revisar no formulário: seleciona o convênio e pré-preenche com o que foi pedido */
 function revisarChamado(c) {
+  const tipo = c.tipo || "edicao";
+  if (tipo === "novo_convenio") return revisarNovoConvenio(c);
+  if (tipo === "novo_acesso")   return revisarNovoAcesso(c);
+
   const convenio = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
     || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
@@ -1270,6 +1325,75 @@ function revisarChamado(c) {
 
     chamadoEmRevisao = c.id;
     mostrarAvisoRevisao(c, camposAlterados);
+
+    const painelEdicao = document.getElementById("painelEdicao");
+    painelEdicao.open = true;
+    painelEdicao.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+/* Revisão de chamado "convênio novo": abre o painel de criação já preenchido.
+   Ao clicar em "Criar convênio", o chamado é concluído automaticamente. */
+function revisarNovoConvenio(c) {
+  const painel = document.getElementById("painelNovoConvenio");
+  if (!painel) return;
+
+  iniciarCriacaoConvenio();
+
+  ajustarSelectEmpresa(document.getElementById("novoEmpresa"), c.empresa);
+  document.getElementById("novoConvenioNome").value = c.convenio || "";
+  document.getElementById("novoRotulo").value       = c.novo_rotulo || "";
+  document.getElementById("novoLink").value         = c.novo_link || "";
+  document.getElementById("novoLogin").value        = c.novo_login || "";
+  document.getElementById("novoSenha").value        = c.nova_senha || "";
+  document.getElementById("novoObservacao").value   = c.nova_observacao || "";
+
+  chamadoEmRevisao = c.id;
+
+  const msg = document.getElementById("msgCriarConvenio");
+  if (msg) {
+    msg.classList.remove("erro");
+    msg.textContent = `Revisando solicitação de ${c.usuario_nome || c.usuario}. ` +
+      `Ao clicar em "Criar convênio", o chamado será concluído.`;
+  }
+
+  painel.open = true;
+  painel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* Revisão de chamado "acesso adicional": abre o convênio existente e acrescenta
+   a linha proposta na seção de acessos adicionais, sem id (será inserida ao salvar). */
+function revisarNovoAcesso(c) {
+  const convenio = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
+    || conveniosCache.find(x =>
+         normalizarTexto(x.empresa) === normalizarTexto(c.empresa) &&
+         normalizarTexto(x.convenio) === normalizarTexto(c.convenio));
+
+  if (!convenio) {
+    alert("O convênio deste chamado não existe mais. Recuse o chamado ou trate como convênio novo.");
+    return;
+  }
+
+  const selectEmpresa = document.getElementById("selectEmpresa");
+  selectEmpresa.value = convenio.empresa;
+  carregarConvenios(convenio.empresa);
+  document.getElementById("selectConvenio").value = convenio.convenio;
+
+  selecionarConvenio(convenio).then(() => {
+    modoEdicaoConvenio = true;
+    aplicarModoEdicaoConvenio();
+    limparDestaquesRevisao();
+
+    acessosExtraAtual.push({
+      rotulo: c.novo_rotulo || c.acesso_rotulo || "",
+      link:   c.novo_link || "",
+      login:  c.novo_login || "",
+      senha:  c.nova_senha || ""
+    });
+    renderizarAcessosExtraForm();
+
+    chamadoEmRevisao = c.id;
+    mostrarAvisoRevisao(c, ["novo acesso adicional"]);
 
     const painelEdicao = document.getElementById("painelEdicao");
     painelEdicao.open = true;
@@ -1321,6 +1445,10 @@ function cancelarRevisao() {
 
 /* Concluir direto: aplica as alterações sem passar pelo formulário */
 async function concluirChamado(c) {
+  const tipo = c.tipo || "edicao";
+  if (tipo === "novo_convenio") return concluirNovoConvenio(c);
+  if (tipo === "novo_acesso")   return concluirNovoAcesso(c);
+
   const payload = {};
   if (c.novo_login) payload.login = c.novo_login;
   if (c.nova_senha) payload.senha = c.nova_senha;
@@ -1372,24 +1500,111 @@ async function concluirChamado(c) {
   await atualizarStatusChamado(c.id, "concluido");
 }
 
+/* Concluir direto um chamado de convênio novo: cria o registro em convenios */
+async function concluirNovoConvenio(c) {
+  const jaExiste = conveniosCache.some(x =>
+    normalizarTexto(x.empresa) === normalizarTexto(c.empresa) &&
+    normalizarTexto(x.convenio) === normalizarTexto(c.convenio));
+
+  if (jaExiste) {
+    alert("Esse convênio já existe para essa empresa. Use \"Revisar no formulário\" para conferir, ou recuse o chamado.");
+    return;
+  }
+
+  if (!confirm(`Criar o convênio ${c.empresa} / ${c.convenio} com os dados solicitados?`)) return;
+
+  const { data, error } = await supabaseClient
+    .from("convenios")
+    .insert({
+      empresa: c.empresa,
+      convenio: (c.convenio || "").trim().toUpperCase(),
+      rotulo: c.novo_rotulo || null,
+      link: c.novo_link ? normalizarLink(c.novo_link) : null,
+      login: c.novo_login || null,
+      senha: c.nova_senha || null,
+      observacao: c.nova_observacao || null
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Erro ao criar convênio a partir do chamado:", error);
+    alert("Não foi possível criar o convênio.");
+    return;
+  }
+
+  conveniosCache.push(data);
+  carregarEmpresas();
+
+  await atualizarStatusChamado(c.id, "concluido");
+}
+
+/* Concluir direto um chamado de acesso adicional: insere em convenio_acessos */
+async function concluirNovoAcesso(c) {
+  const convenio = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
+    || conveniosCache.find(x =>
+         normalizarTexto(x.empresa) === normalizarTexto(c.empresa) &&
+         normalizarTexto(x.convenio) === normalizarTexto(c.convenio));
+
+  if (!convenio) {
+    alert("O convênio deste chamado não existe mais. Recuse o chamado ou trate como convênio novo.");
+    return;
+  }
+
+  if (!confirm(`Adicionar este acesso ao convênio ${convenio.empresa} / ${convenio.convenio}?`)) return;
+
+  const { error } = await supabaseClient
+    .from("convenio_acessos")
+    .insert({
+      convenio_id: convenio.id,
+      rotulo: c.novo_rotulo || c.acesso_rotulo || null,
+      link: c.novo_link ? normalizarLink(c.novo_link) : null,
+      login: c.novo_login || null,
+      senha: c.nova_senha || null
+    });
+
+  if (error) {
+    console.error("Erro ao criar acesso adicional a partir do chamado:", error);
+    alert("Não foi possível adicionar esse acesso.");
+    return;
+  }
+
+  if (convenioAtual && convenioAtual.id === convenio.id) {
+    await carregarAcessosExtra(convenio.id);
+  }
+
+  await atualizarStatusChamado(c.id, "concluido");
+}
+
 /* Recusar chamado: encerra a solicitação sem aplicar nenhuma alteração nos dados */
 async function recusarChamado(c) {
-  if (!confirm("Recusar este chamado sem aplicar nenhuma alteração?")) return;
-  await atualizarStatusChamado(c.id, "recusado");
+  const motivo = prompt(
+    "Motivo da recusa (o solicitante vai ler esta mensagem):"
+  );
+  if (motivo === null) return;               // cancelou
+
+  if (!motivo.trim()) {
+    alert("É necessário informar o motivo da recusa.");
+    return;
+  }
+
+  await atualizarStatusChamado(c.id, "recusado", { motivo_recusa: motivo.trim() });
 }
 
 function normalizarLink(link) {
   return link.startsWith("http") ? link : "https://" + link;
 }
 
-async function atualizarStatusChamado(id, status) {
+async function atualizarStatusChamado(id, status, extras = {}) {
   const { error } = await supabaseClient
     .from("chamados")
     .update({
       status,
       data_conclusao: new Date().toISOString(),
       admin_concluiu_email: currentUserEmail,
-      admin_concluiu_nome: currentUserName
+      admin_concluiu_nome: currentUserName,
+      visto_pelo_usuario: false,   // volta a contar como novidade para o solicitante
+      ...extras
     })
     .eq("id", id);
 
