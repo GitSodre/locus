@@ -86,6 +86,16 @@
       <div id="outrosAcessos" class="outros-acessos" hidden>
         <div id="listaOutrosAcessos"></div>
       </div>
+
+      <!-- Solicitação de cadastro de acesso já existente (qualquer usuário) -->
+      <div class="caixa-cadastro-usuario">
+        <button id="btnCadastrarAcesso" type="button" class="btn-cinza btn-small">
+          + Cadastrar um acesso que eu já uso
+        </button>
+        <span class="painel-aviso cadastro-dica">
+          Tem um login de convênio que ainda não está no Locus? Envie para aprovação.
+        </span>
+      </div>
     </div>
 
     <!-- ============================================================
@@ -311,6 +321,78 @@
         <button id="btnConfirmarChamado" class="btn-verde">Enviar solicitação</button>
       </div>
       <p id="msgModalChamado" class="msg-feedback"></p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL — CADASTRAR ACESSO EXISTENTE (usuários normais)
+  ============================================================= -->
+  <div id="modalCadastro" class="modal-overlay" hidden>
+    <div class="modal-card modal-card-largo">
+      <h2>Cadastrar acesso existente</h2>
+      <p class="painel-aviso">
+        Preencha os dados do acesso que você já utiliza. A solicitação passa
+        pela aprovação de um administrador antes de entrar no sistema.
+      </p>
+
+      <div class="modal-campo">
+        <label for="cadEmpresa">Empresa <span class="obrigatorio">*</span></label>
+        <select id="cadEmpresa">
+          <option value="">Selecione a empresa</option>
+          <option value="CLÍNICA">CLÍNICA</option>
+          <option value="HA">HA</option>
+          <option value="CTS">CTS</option>
+          <option value="CTN">CTN</option>
+        </select>
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadConvenio">Convênio <span class="obrigatorio">*</span></label>
+        <input type="text" id="cadConvenio" class="campo-maiusculo"
+               placeholder="NOME DO CONVÊNIO" autocomplete="off">
+      </div>
+
+      <!-- Preenchido por JS: diz se será convênio novo ou acesso adicional -->
+      <p id="cadDeteccao" class="cad-deteccao" hidden></p>
+
+      <div class="modal-campo">
+        <label for="cadRotulo">Rótulo deste acesso</label>
+        <input type="text" id="cadRotulo"
+               placeholder="Ex: Portal principal, Portal financeiro...">
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadLink">Link</label>
+        <input type="text" id="cadLink" placeholder="https://...">
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadLogin">Login</label>
+        <input type="text" id="cadLogin" placeholder="Login de acesso">
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadSenha">Senha</label>
+        <input type="text" id="cadSenha" placeholder="Senha de acesso">
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadObservacao">Observação</label>
+        <textarea id="cadObservacao" rows="2"
+                  placeholder="Algo que ajude quem for usar esse acesso"></textarea>
+      </div>
+
+      <div class="modal-campo">
+        <label for="cadJustificativa">Justificativa <span class="obrigatorio">*</span></label>
+        <textarea id="cadJustificativa" rows="2"
+                  placeholder="De onde veio esse acesso e por que ele deve entrar no sistema"></textarea>
+      </div>
+
+      <div class="modal-botoes">
+        <button id="btnCancelarCadastro" class="btn-vermelho">Cancelar</button>
+        <button id="btnConfirmarCadastro" class="btn-verde">Enviar para aprovação</button>
+      </div>
+      <p id="msgModalCadastro" class="msg-feedback"></p>
     </div>
   </div>
 
