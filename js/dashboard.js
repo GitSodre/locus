@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   prepararBotoesDeCopia();
   prepararPainelAdmin();
   prepararModalChamado();
+  prepararModalCadastro();
 
   await verificarPapel();
 
@@ -1036,8 +1037,7 @@ function prepararModalChamado() {
       novo_login: alterarLogin ? novoLogin : null,
       nova_senha: alterarSenha ? novaSenha : null,
       novo_link: alterarLink ? novoLink : null,
-      status: "aberto",
-      visualizado: false
+      status: "aberto"
     });
 
     if (error) {
@@ -1534,4 +1534,177 @@ function limparDados() {
   limparFormularioEdicao();
   cancelarRevisao();
   setCopyState();
+}
+
+/* =====================================================
+   MODAL — CADASTRAR ACESSO EXISTENTE (usuário normal)
+   Gera chamados de dois tipos, detectados automaticamente:
+     - novo_convenio : o par empresa + convênio ainda não existe
+     - novo_acesso   : o convênio já existe naquela empresa
+===================================================== */
+
+/* Normaliza só para COMPARAR. O valor gravado é sempre o que
+   o usuário escreveu (convertido para maiúsculas no envio). */
+function normalizarTexto(str) {
+  return (str ?? "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")  // ignora acentos
+    .replace(/\s+/g, " ")             // colapsa espaços repetidos
+    .trim()
+    .toLowerCase();
+}
+
+/* Procura o par empresa + convênio no cache já carregado no login.
+   Não consulta o banco. */
+function buscarConvenioNoCache(empresa, convenio) {
+  const alvoConv = normalizarTexto(convenio);
+  const alvoEmp = normalizarTexto(empresa);
+  if (!alvoConv || !alvoEmp) return null;
+
+  return conveniosCache.find(c =>
+    normalizarTexto(c.convenio) === alvoConv &&
+    normalizarTexto(c.empresa) === alvoEmp
+  ) || null;
+}
+
+// Convênio detectado na digitação atual (null = será um convênio novo)
+let convenioDetectadoCadastro = null;
+
+function atualizarDeteccaoCadastro() {
+  const empresa = document.getElementById("cadEmpresa").value;
+  const convenio = document.getElementById("cadConvenio").value;
+  const aviso = document.getElementById("cadDeteccao");
+
+  convenioDetectadoCadastro = buscarConvenioNoCache(empresa, convenio);
+
+  aviso.className = "cad-deteccao";
+
+  if (!empresa || !convenio.trim()) {
+    aviso.hidden = true;
+    return;
+  }
+
+  aviso.hidden = false;
+
+  if (convenioDetectadoCadastro) {
+    aviso.classList.add("cad-existente");
+    aviso.textContent =
+      `${empresa} / ${convenioDetectadoCadastro.convenio} já está cadastrado. ` +
+      `Sua solicitação será registrada como um acesso adicional desse convênio.`;
+  } else {
+    aviso.classList.add("cad-novo");
+    aviso.textContent =
+      `Esse convênio ainda não existe para ${empresa}. ` +
+      `Será solicitado o cadastro de um convênio novo.`;
+  }
+}
+
+function limparModalCadastro() {
+  ["cadConvenio", "cadRotulo", "cadLink", "cadLogin",
+   "cadSenha", "cadObservacao", "cadJustificativa"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("cadEmpresa").value = "";
+
+  const aviso = document.getElementById("cadDeteccao");
+  aviso.hidden = true;
+  aviso.className = "cad-deteccao";
+
+  const msg = document.getElementById("msgModalCadastro");
+  msg.textContent = "";
+  msg.classList.remove("erro");
+
+  convenioDetectadoCadastro = null;
+}
+
+function prepararModalCadastro() {
+  const btnAbrir = document.getElementById("btnCadastrarAcesso");
+  const modal = document.getElementById("modalCadastro");
+  const btnCancelar = document.getElementById("btnCancelarCadastro");
+  const btnConfirmar = document.getElementById("btnConfirmarCadastro");
+
+  if (!btnAbrir || !modal) return;
+
+  // A detecção roda em cima do cache em memória, então pode
+  // rodar a cada tecla sem custo de rede.
+  document.getElementById("cadConvenio")
+    .addEventListener("input", atualizarDeteccaoCadastro);
+  document.getElementById("cadEmpresa")
+    .addEventListener("change", atualizarDeteccaoCadastro);
+
+  btnAbrir.addEventListener("click", () => {
+    limparModalCadastro();
+    modal.hidden = false;
+  });
+
+  btnCancelar?.addEventListener("click", () => { modal.hidden = true; });
+
+  btnConfirmar?.addEventListener("click", async () => {
+    const msg = document.getElementById("msgModalCadastro");
+    const marcarErro = texto => {
+      msg.textContent = texto;
+      msg.classList.add("erro");
+    };
+
+    const empresa = document.getElementById("cadEmpresa").value;
+    // Maiúsculas aplicadas aqui, no valor que vai para o banco
+    const convenio = document.getElementById("cadConvenio").value.trim().toUpperCase();
+    const rotulo = document.getElementById("cadRotulo").value.trim();
+    const link = document.getElementById("cadLink").value.trim();
+    const login = document.getElementById("cadLogin").value.trim();
+    const senha = document.getElementById("cadSenha").value.trim();
+    const observacao = document.getElementById("cadObservacao").value.trim();
+    const justificativa = document.getElementById("cadJustificativa").value.trim();
+
+    if (!empresa)  return marcarErro("Selecione a empresa.");
+    if (!convenio) return marcarErro("Informe o nome do convênio.");
+    if (!link && !login) {
+      return marcarErro("Informe ao menos o link ou o login do acesso.");
+    }
+    if (!justificativa) {
+      return marcarErro("Explique brevemente de onde vem esse acesso.");
+    }
+
+    // Revalida a detecção no momento do envio, e não só na digitação
+    const existente = buscarConvenioNoCache(empresa, convenio);
+
+    btnConfirmar.disabled = true;
+
+    const { error } = await supabaseClient.from("chamados").insert({
+      usuario: currentUserEmail,
+      usuario_nome: currentUserName,
+      tipo: existente ? "novo_acesso" : "novo_convenio",
+      empresa: empresa,
+      convenio: existente ? existente.convenio : convenio,
+      convenio_id: existente ? existente.id : null,
+      acesso_id: null,
+      acesso_rotulo: rotulo || null,
+      novo_rotulo: rotulo || null,
+      novo_login: login || null,
+      nova_senha: senha || null,
+      novo_link: link || null,
+      nova_observacao: observacao || null,
+      justificativa: justificativa,
+      status: "aberto"
+    });
+
+    btnConfirmar.disabled = false;
+
+    if (error) {
+      console.error("Erro ao enviar cadastro:", error);
+      // 23505 = índice único chamados_aberto_unico
+      if (error.code === "23505") {
+        return marcarErro(
+          "Você já tem uma solicitação em aberto para esse convênio. " +
+          "Aguarde a análise de um administrador."
+        );
+      }
+      return marcarErro("Erro ao enviar solicitação.");
+    }
+
+    msg.classList.remove("erro");
+    msg.textContent = "Solicitação enviada para aprovação!";
+    setTimeout(() => { modal.hidden = true; }, 1400);
+  });
 }
