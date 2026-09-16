@@ -9,6 +9,14 @@ const ICON_COPY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 2
 
 // logout global
 window.logout = async function () {
+  if (canalChamados) {
+    await supabaseClient.removeChannel(canalChamados);
+    canalChamados = null;
+  }
+  if (canalConvenios) {
+    await supabaseClient.removeChannel(canalConvenios);
+    canalConvenios = null;
+  }
   await supabaseClient.auth.signOut();
   window.location.href = "index.html";
 };
@@ -29,6 +37,15 @@ let chamadosCache = [];          // chamados carregados (admin: todos / usuário
 let acessosChamadosCache = {};   // acessos adicionais referenciados pelos chamados
 let filtroChamados = "aberto";   // filtro ativo — o painel sempre abre em "Em aberto"
 
+/* Realtime / atualização automática — escopo restrito à tabela `chamados`. */
+let canalChamados = null;            // canal WebSocket assinado
+let recarregarChamadosTimer = null;  // debounce dos eventos
+let ultimaRecargaChamados = 0;       // throttle da recarga ao focar a aba
+let ultimoTotalAbertos = null;       // para detectar CRESCIMENTO da fila (null = 1ª renderização)
+let canalConvenios = null;           // canal WebSocket de convenios / convenio_acessos
+let recarregarConveniosTimer = null; // debounce dos eventos de convênio
+let redesenhoConveniosPendente = false; // mudou algo enquanto a tela estava ocupada
+
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: sessionData, error: sessionError } =
@@ -45,6 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   prepararModalChamado();
   prepararModalCadastro();
   prepararFiltrosChamados();
+  prepararRecargaAoFocar();
 
   await verificarPapel();
 
@@ -119,10 +137,208 @@ function aplicarVisibilidadeAdmin() {
   }
 
   carregarChamados();
+  assinarChamadosRealtime();
+  assinarConveniosRealtime();
 
   if (isAdmin) {
     carregarUsuarios();
   }
+}
+
+/* =====================================================
+   ATUALIZAÇÃO AUTOMÁTICA DOS CHAMADOS
+
+   Escopo deliberadamente estreito: o único efeito de um evento é
+   recarregar o painel de chamados (badge + contadores + lista).
+   Convênios, formulário de edição, selects e modais NÃO são tocados,
+   então quem está consultando um convênio não é interrompido.
+===================================================== */
+function assinarChamadosRealtime() {
+  if (canalChamados) return;
+
+  const assinatura = { event: "*", schema: "public", table: "chamados" };
+
+  // Usuário comum só assina os próprios chamados — menos tráfego e
+  // nenhum dado de terceiro chegando ao navegador dele.
+  if (!isAdmin) {
+    assinatura.filter = `usuario=eq.${currentUserEmail}`;
+  }
+
+  canalChamados = supabaseClient
+    .channel("painel-chamados")
+    .on("postgres_changes", assinatura, () => agendarRecargaChamados())
+    .subscribe(status => {
+      if (status === "SUBSCRIBED") {
+        // pega o que mudou enquanto a conexão esteve fora do ar
+        agendarRecargaChamados();
+      }
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn(
+          "Realtime de chamados indisponível (" + status + "). " +
+          "A lista continua sendo atualizada quando a aba volta ao foco."
+        );
+      }
+    });
+}
+
+/* O payload do evento é ignorado de propósito: nada que vem pelo socket
+   é renderizado. O que aparece na tela vem sempre de uma nova consulta,
+   que já passa pelo RLS e pelo filtro por usuário. */
+function agendarRecargaChamados() {
+  clearTimeout(recarregarChamadosTimer);
+  recarregarChamadosTimer = setTimeout(carregarChamados, 400);
+}
+
+/* Rede de segurança: se o WebSocket cair ou o realtime não estiver
+   habilitado na tabela, a lista ainda atualiza quando a pessoa volta
+   para a aba (no máximo uma consulta a cada 15s). */
+function prepararRecargaAoFocar() {
+  const aoVoltar = () => {
+    if (document.visibilityState !== "visible") return;
+    if (Date.now() - ultimaRecargaChamados < 15000) return;
+    carregarChamados();
+  };
+
+  document.addEventListener("visibilitychange", aoVoltar);
+  window.addEventListener("focus", aoVoltar);
+}
+
+/* =====================================================
+   ATUALIZAÇÃO AUTOMÁTICA DOS CONVÊNIOS
+
+   Um convênio criado, editado ou excluído por qualquer pessoa aparece
+   na hora para todo mundo — sem recarregar a página e SEM interromper
+   quem está no meio de alguma coisa (ver telaOcupada()).
+===================================================== */
+function assinarConveniosRealtime() {
+  if (canalConvenios) return;
+
+  canalConvenios = supabaseClient
+    .channel("painel-convenios")
+    .on("postgres_changes", { event: "*", schema: "public", table: "convenios" },
+        () => agendarSincronizacaoConvenios())
+    .on("postgres_changes", { event: "*", schema: "public", table: "convenio_acessos" },
+        () => agendarSincronizacaoConvenios())
+    .subscribe(status => {
+      if (status === "SUBSCRIBED") agendarSincronizacaoConvenios();
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        console.warn(
+          "Realtime de convênios indisponível (" + status + "). " +
+          "A lista continua sendo atualizada quando a aba volta ao foco."
+        );
+      }
+    });
+}
+
+function agendarSincronizacaoConvenios() {
+  clearTimeout(recarregarConveniosTimer);
+  recarregarConveniosTimer = setTimeout(sincronizarConvenios, 400);
+}
+
+/* A tela está "ocupada" quando mexer nela faria a pessoa perder trabalho
+   ou agir sobre um dado que ela ainda nem viu mudar. Nesses casos o cache
+   é atualizado em silêncio e o redesenho fica pendente. */
+function telaOcupada() {
+  if (modoEdicaoConvenio || modoCriacaoAtivo || chamadoEmRevisao) return true;
+
+  const modalChamado  = document.getElementById("modalChamado");
+  const modalCadastro = document.getElementById("modalCadastro");
+
+  return (modalChamado && !modalChamado.hidden) ||
+         (modalCadastro && !modalCadastro.hidden);
+}
+
+async function sincronizarConvenios() {
+  const { data, error } = await supabaseClient.from("convenios").select("*");
+
+  if (error) {
+    console.error("Erro ao sincronizar convênios:", error);
+    return;
+  }
+
+  conveniosCache = data || [];
+
+  if (telaOcupada()) {
+    redesenhoConveniosPendente = true;
+    mostrarAvisoAtualizacao();
+    return;
+  }
+
+  redesenhoConveniosPendente = false;
+  redesenharConvenios();
+}
+
+/* Chamado quando a edição/criação termina (aplicarModoEdicaoConvenio /
+   aplicarModoCriacao) e quando um modal fecha. */
+function aplicarRedesenhoPendente() {
+  if (!redesenhoConveniosPendente || telaOcupada()) return;
+  redesenhoConveniosPendente = false;
+  redesenharConvenios();
+}
+
+/* Reconstrói os selects e a exibição PRESERVANDO a seleção da pessoa.
+   Atribuir .value num <select> não dispara onchange, então nada é
+   recarregado sem necessidade. */
+function redesenharConvenios() {
+  const selectEmpresa  = document.getElementById("selectEmpresa");
+  const selectConvenio = document.getElementById("selectConvenio");
+  if (!selectEmpresa || !selectConvenio) return;
+
+  const empresaSelecionada  = selectEmpresa.value;
+  const convenioSelecionado = selectConvenio.value;
+
+  carregarEmpresas();
+  selectEmpresa.value = empresaSelecionada;
+
+  // a empresa que estava selecionada não existe mais em nenhum convênio
+  if (empresaSelecionada && selectEmpresa.value !== empresaSelecionada) {
+    limparDados();
+    return;
+  }
+
+  if (!empresaSelecionada) return;
+
+  carregarConvenios(empresaSelecionada);
+  selectConvenio.value = convenioSelecionado;
+
+  if (!convenioSelecionado) return;
+
+  const atualizado = conveniosCache.find(
+    x => x.empresa === empresaSelecionada && x.convenio === convenioSelecionado
+  );
+
+  // o convênio aberto na tela foi excluído ou renomeado por outra pessoa
+  if (!atualizado) {
+    limparDados();
+    document.getElementById("outEmpresa").textContent = empresaSelecionada;
+    mostrarAvisoAtualizacao("O convênio que estava aberto foi alterado ou removido por outro usuário.");
+    return;
+  }
+
+  convenioAtual = atualizado;
+  document.getElementById("outEmpresa").textContent = atualizado.empresa;
+  document.getElementById("outConvenio").textContent = atualizado.convenio;
+  atualizarExibicaoConvenio(atualizado);
+  document.getElementById("btnChamado").disabled = false;
+
+  carregarAcessosExtra(atualizado.id);
+
+  if (isAdmin) preencherFormularioEdicao(atualizado);
+
+  setCopyState();
+}
+
+/* Aviso discreto no canto da tela — nunca bloqueia nem rouba o foco */
+function mostrarAvisoAtualizacao(texto) {
+  const el = document.getElementById("avisoAtualizacao");
+  if (!el) return;
+
+  el.textContent = texto ||
+    "Os convênios foram atualizados por outro usuário. As mudanças aparecem quando você terminar o que está fazendo.";
+  el.hidden = false;
+
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.hidden = true; }, 6000);
 }
 
 /* ================= EMPRESAS ================= */
@@ -579,6 +795,8 @@ function aplicarModoCriacao() {
 
   const btnCancelar = document.getElementById("btnCancelarNovoConvenio");
   if (btnCancelar) { btnCancelar.hidden = !modoCriacaoAtivo; btnCancelar.disabled = !modoCriacaoAtivo; }
+
+  if (!modoCriacaoAtivo) aplicarRedesenhoPendente();
 }
 
 /* Libera os campos do formulário de criação (botão "Começar a criar convênio") */
@@ -746,6 +964,8 @@ function aplicarModoEdicaoConvenio() {
 
   // Reflete o mesmo estado (travado/editável) nos acessos adicionais
   if (isAdmin) renderizarAcessosExtraForm();
+
+  if (!editando) aplicarRedesenhoPendente();
 }
 
 /* Destrava o formulário do convênio selecionado para edição (botão "Editar convênio") */
@@ -1028,7 +1248,7 @@ function prepararModalChamado() {
     });
   });
 
-  btnCancelar?.addEventListener("click", () => { modal.hidden = true; });
+  btnCancelar?.addEventListener("click", () => { modal.hidden = true; aplicarRedesenhoPendente(); });
 
   btnConfirmar?.addEventListener("click", async () => {
     if (!convenioAtual || !contextoSolicitacao) return;
@@ -1078,7 +1298,7 @@ function prepararModalChamado() {
 
     msg.classList.remove("erro");
     msg.textContent = "Solicitação enviada com sucesso!";
-    setTimeout(() => { modal.hidden = true; }, 1200);
+    setTimeout(() => { modal.hidden = true; aplicarRedesenhoPendente(); }, 1200);
   });
 }
 
@@ -1109,6 +1329,8 @@ async function carregarChamados() {
   if (!isAdmin) {
     consulta = consulta.eq("usuario", currentUserEmail);
   }
+
+  ultimaRecargaChamados = Date.now();
 
   const { data, error } = await consulta;
 
@@ -1205,6 +1427,8 @@ function renderizarChamados() {
     else badge.hidden = true;
   }
 
+  sinalizarNovidade(contagens.aberto, badge);
+
   const visiveis = filtroChamados === "todos"
     ? chamadosCache
     : chamadosCache.filter(c => normalizarStatus(c.status) === filtroChamados);
@@ -1293,6 +1517,23 @@ function renderizarChamados() {
     item.appendChild(acoes);
     lista.appendChild(item);
   });
+}
+
+/* Avisa que a fila cresceu, sem interromper nada: uma pulsada no badge
+   e a contagem no título da aba (o admin costuma deixar o Locus em
+   segundo plano, onde o badge não é visível). */
+function sinalizarNovidade(abertos, badge) {
+  const TITULO_BASE = "Dashboard - Locus";
+  document.title = abertos > 0 ? `(${abertos}) ${TITULO_BASE}` : TITULO_BASE;
+
+  const cresceu = ultimoTotalAbertos !== null && abertos > ultimoTotalAbertos;
+  ultimoTotalAbertos = abertos;
+
+  if (cresceu && badge) {
+    badge.classList.remove("badge-novo");
+    void badge.offsetWidth;          // força o reinício da animação
+    badge.classList.add("badge-novo");
+  }
 }
 
 function rotuloTipo(tipo) {
@@ -1945,7 +2186,7 @@ function prepararModalCadastro() {
     modal.hidden = false;
   });
 
-  btnCancelar?.addEventListener("click", () => { modal.hidden = true; });
+  btnCancelar?.addEventListener("click", () => { modal.hidden = true; aplicarRedesenhoPendente(); });
 
   btnConfirmar?.addEventListener("click", async () => {
     const msg = document.getElementById("msgModalCadastro");
@@ -2012,6 +2253,6 @@ function prepararModalCadastro() {
 
     msg.classList.remove("erro");
     msg.textContent = "Solicitação enviada para aprovação!";
-    setTimeout(() => { modal.hidden = true; }, 1400);
+    setTimeout(() => { modal.hidden = true; aplicarRedesenhoPendente(); }, 1400);
   });
 }
