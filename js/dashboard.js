@@ -23,6 +23,12 @@ let chamadoEmRevisao = null;    // id do chamado sendo revisado no formulário d
 let modoEdicaoConvenio = false; // true = campos de edição do convênio destravados
 let modoCriacaoAtivo = false;   // true = campos de criação de novo convênio destravados
 
+/* Chamados: os dados são buscados uma vez e filtrados em memória,
+   por isso os botões de filtro respondem sem nova consulta ao banco. */
+let chamadosCache = [];          // chamados carregados (admin: todos / usuário: só os dele)
+let acessosChamadosCache = {};   // acessos adicionais referenciados pelos chamados
+let filtroChamados = "aberto";   // filtro ativo — o painel sempre abre em "Em aberto"
+
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: sessionData, error: sessionError } =
@@ -38,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   prepararPainelAdmin();
   prepararModalChamado();
   prepararModalCadastro();
+  prepararFiltrosChamados();
 
   await verificarPapel();
 
@@ -54,6 +61,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   conveniosCache = data || [];
   carregarEmpresas();
+
+  /* carregarChamados() dispara junto com verificarPapel(), antes de conveniosCache
+     existir — sem este redesenho o "valor atual" do diff sai como "—". */
+  if (chamadosCache.length > 0) renderizarChamados();
 });
 
 /* =====================================================
@@ -96,11 +107,20 @@ function aplicarVisibilidadeAdmin() {
 
   if (painelEdicao) painelEdicao.hidden = !isAdmin;
   if (painelNovoConvenio) painelNovoConvenio.hidden = !isAdmin;
-  if (painelChamados) painelChamados.hidden = !isAdmin;
   if (painelUsuarios) painelUsuarios.hidden = !isAdmin;
 
+  // O painel de chamados agora aparece para todo mundo: o admin enxerga
+  // a fila inteira e atende; o usuário comum acompanha só os próprios.
+  if (painelChamados) painelChamados.hidden = false;
+
+  const tituloChamados = document.getElementById("tituloChamados");
+  if (tituloChamados) {
+    tituloChamados.textContent = isAdmin ? "Chamados de alteração" : "Meus chamados";
+  }
+
+  carregarChamados();
+
   if (isAdmin) {
-    carregarChamados();
     carregarUsuarios();
   }
 }
@@ -1078,10 +1098,19 @@ function ligarCheckboxCampo(checkboxId, inputId) {
    PAINEL ADMIN — LISTA DE CHAMADOS
 ===================================================== */
 async function carregarChamados() {
-  const { data, error } = await supabaseClient
+  let consulta = supabaseClient
     .from("chamados")
     .select("*")
     .order("data_abertura", { ascending: false });
+
+  /* Usuário comum só enxerga os chamados que ele mesmo abriu.
+     ATENÇÃO: este filtro é conveniência de interface. A barreira real
+     é a policy de RLS da tabela `chamados` no Supabase. */
+  if (!isAdmin) {
+    consulta = consulta.eq("usuario", currentUserEmail);
+  }
+
+  const { data, error } = await consulta;
 
   if (error) {
     console.error("Erro ao carregar chamados:", error);
@@ -1106,34 +1135,93 @@ async function carregarChamados() {
     }
   }
 
-  renderizarChamados(chamados, acessosMap);
+  chamadosCache = chamados;
+  acessosChamadosCache = acessosMap;
+
+  renderizarChamados();
 }
 
-function renderizarChamados(chamados, acessosMap) {
+/* =====================================================
+   FILTROS DO PAINEL DE CHAMADOS
+===================================================== */
+function prepararFiltrosChamados() {
+  const barra = document.getElementById("filtrosChamados");
+  if (!barra) return;
+
+  barra.querySelectorAll(".filtro-chamado").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filtroChamados = btn.dataset.filtro || "aberto";
+      marcarFiltroAtivo();
+      renderizarChamados();
+    });
+  });
+
+  marcarFiltroAtivo();
+}
+
+function marcarFiltroAtivo() {
+  document.querySelectorAll("#filtrosChamados .filtro-chamado").forEach(btn => {
+    const ativo = btn.dataset.filtro === filtroChamados;
+    btn.classList.toggle("ativo", ativo);
+    btn.setAttribute("aria-pressed", ativo ? "true" : "false");
+  });
+}
+
+function atualizarContadoresFiltro(contagens) {
+  document.querySelectorAll("#filtrosChamados .filtro-contador").forEach(el => {
+    el.textContent = contagens[el.dataset.contador] ?? 0;
+  });
+}
+
+/* Mensagem de lista vazia — precisa dizer POR QUE está vazia, senão
+   quem tem chamados concluídos acha que o sistema perdeu tudo. */
+function mensagemListaVazia() {
+  if (chamadosCache.length === 0) {
+    return isAdmin
+      ? "Nenhum chamado no momento."
+      : "Você ainda não abriu nenhum chamado.";
+  }
+  if (filtroChamados === "aberto") {
+    return "Nenhum chamado em aberto. Use os filtros acima para ver os já atendidos.";
+  }
+  if (filtroChamados === "concluido") return "Nenhum chamado concluído até agora.";
+  if (filtroChamados === "recusado")  return "Nenhum chamado rejeitado.";
+  return "Nenhum chamado no momento.";
+}
+
+function renderizarChamados() {
   const lista = document.getElementById("listaChamados");
   const badge = document.getElementById("badgeChamados");
   if (!lista) return;
 
-  const abertos = chamados.filter(c => normalizarStatus(c.status) === "aberto");
+  /* Contagens sempre sobre o conjunto COMPLETO, nunca sobre a lista filtrada:
+     se fossem calculadas depois do filtro, o badge zeraria ao clicar em "Concluídos". */
+  const contagens = { aberto: 0, concluido: 0, recusado: 0, todos: chamadosCache.length };
+  chamadosCache.forEach(c => { contagens[normalizarStatus(c.status)]++; });
+  atualizarContadoresFiltro(contagens);
 
   if (badge) {
-    if (abertos.length > 0) { badge.textContent = abertos.length; badge.hidden = false; }
+    if (contagens.aberto > 0) { badge.textContent = contagens.aberto; badge.hidden = false; }
     else badge.hidden = true;
   }
 
-  if (chamados.length === 0) {
-    lista.innerHTML = '<p class="painel-aviso">Nenhum chamado no momento.</p>';
-    return;
-  }
+  const visiveis = filtroChamados === "todos"
+    ? chamadosCache
+    : chamadosCache.filter(c => normalizarStatus(c.status) === filtroChamados);
 
   lista.innerHTML = "";
 
-  chamados.forEach(c => {
+  if (visiveis.length === 0) {
+    lista.appendChild(criarP("painel-aviso", mensagemListaVazia()));
+    return;
+  }
+
+  visiveis.forEach(c => {
     const status = normalizarStatus(c.status);
     const convenioRef = conveniosCache.find(x => c.convenio_id && x.id === c.convenio_id)
       || conveniosCache.find(x => x.empresa === c.empresa && x.convenio === c.convenio);
 
-    const referencia = c.acesso_id ? acessosMap[c.acesso_id] : convenioRef;
+    const referencia = c.acesso_id ? acessosChamadosCache[c.acesso_id] : convenioRef;
     const tipoChamado = c.tipo || "edicao";
 
     const tituloAcesso = tipoChamado !== "edicao"
@@ -1178,7 +1266,9 @@ function renderizarChamados(chamados, acessosMap) {
     statusSpan.textContent = rotuloStatus(status);
     acoes.appendChild(statusSpan);
 
-    if (status === "aberto") {
+    /* Ações de atendimento: SOMENTE admin. O usuário comum vê o mesmo card,
+       com o status, mas sem nenhum botão — é uma tela de acompanhamento. */
+    if (isAdmin && status === "aberto") {
       const btnRevisar = document.createElement("button");
       btnRevisar.className = "btn-verde btn-small";
       btnRevisar.textContent = "Revisar no formulário";
@@ -1264,8 +1354,10 @@ function normalizarStatus(status) {
 
 function rotuloStatus(status) {
   if (status === "concluido") return "Concluído";
-  if (status === "recusado") return "Recusado";
-  return "Aberto";
+  if (status === "recusado") return "Rejeitado";
+  /* Para o admin é uma fila de trabalho ("Aberto");
+     para quem abriu o chamado, a espera é de outra pessoa ("Aguardando"). */
+  return isAdmin ? "Aberto" : "Aguardando";
 }
 
 function formatarData(iso) {
