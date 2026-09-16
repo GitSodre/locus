@@ -523,6 +523,52 @@ details.painel-admin[open] summary h2::before {
   transform: rotate(90deg);
 }
 
+/* Barra de filtros por status dos chamados */
+.filtros-chamados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.filtro-chamado {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid #334155;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.filtro-chamado:hover { background-color: rgba(255, 255, 255, 0.09); }
+
+.filtro-contador {
+  background-color: rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Filtro ativo: reaproveita as mesmas cores dos selos de status */
+.filtro-chamado.ativo { color: #0c143a; }
+.filtro-chamado.ativo .filtro-contador {
+  background-color: rgba(255, 255, 255, 0.35);
+  color: #0c143a;
+}
+.filtro-chamado.filtro-aberto.ativo    { background-color: #f59e0b; border-color: #f59e0b; }
+.filtro-chamado.filtro-concluido.ativo { background-color: #16a34a; border-color: #16a34a; color: #fff; }
+.filtro-chamado.filtro-recusado.ativo  { background-color: #9ca3af; border-color: #9ca3af; }
+.filtro-chamado.filtro-todos.ativo     { background-color: #93c5fd; border-color: #93c5fd; }
+.filtro-chamado.filtro-concluido.ativo .filtro-contador { color: #fff; }
+
 /* Lista de chamados */
 .lista-chamados {
   margin-top: 15px;
