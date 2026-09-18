@@ -22,3 +22,24 @@ const supabaseClient = window.supabase.createClient(
     }
   }
 );
+
+/*
+ * O Supabase sempre devolve error.message em inglês. Essa função traduz
+ * as mensagens mais comuns que aparecem nas telas de senha (primeiro
+ * acesso / redefinir senha); qualquer mensagem não mapeada cai num
+ * texto genérico em vez de mostrar o inglês cru pro usuário.
+ */
+function traduzirErroAuth(mensagem) {
+  const mapa = {
+    "New password should be different from the old password.":
+      "A nova senha precisa ser diferente da senha atual.",
+    "Password should be at least 6 characters":
+      "A senha precisa ter pelo menos 6 caracteres.",
+    "Auth session missing!":
+      "Sessão expirada. Peça um novo link e tente de novo.",
+    "Invalid login credentials":
+      "Email ou senha inválidos."
+  };
+
+  return mapa[mensagem] || "Não foi possível concluir a operação. Tente novamente.";
+}
