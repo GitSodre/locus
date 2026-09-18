@@ -30,5 +30,23 @@ document.getElementById("btnEntrar").addEventListener("click", async () => {
     return;
   }
 
+  // Verifica se este é o primeiro acesso do usuário: se for, ele ainda
+  // está usando a senha temporária cadastrada pelo admin e precisa
+  // definir sua própria senha (PIN de 6 dígitos) antes de entrar.
+  const { data: userRow, error: errUsuario } = await supabaseClient
+    .from("usuarios")
+    .select("primeiro_acesso")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (errUsuario) {
+    console.error("Erro ao verificar primeiro acesso:", errUsuario);
+  }
+
+  if (userRow?.primeiro_acesso) {
+    window.location.href = "primeiro-acesso.html";
+    return;
+  }
+
   window.location.href = "dashboard.html";
 });
