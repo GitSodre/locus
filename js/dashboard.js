@@ -56,6 +56,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  /* Trava de primeiro acesso: quem ainda não definiu a própria senha é
+     mandado de volta para a tela de troca antes de qualquer consulta.
+     Isso é só a camada visual — o bloqueio de verdade está nas políticas
+     de RLS do banco (ver supabase-bloqueio-primeiro-acesso.sql), que
+     impedem a leitura dos dados mesmo por fora do site. */
+  const emailSessao = sessionData.session.user?.email || "";
+  const { data: linhaUsuario } = await supabaseClient
+    .from("usuarios")
+    .select("primeiro_acesso")
+    .eq("email", emailSessao)
+    .maybeSingle();
+
+  if (linhaUsuario?.primeiro_acesso) {
+    window.location.href = "primeiro-acesso.html";
+    return;
+  }
+
   limparDados();
   prepararBotoesDeCopia();
   prepararPainelAdmin();
