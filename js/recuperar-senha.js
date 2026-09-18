@@ -19,11 +19,18 @@ document.getElementById("btnEnviar").addEventListener("click", async () => {
 
   btn.disabled = true;
 
-  // redirectTo precisa estar na lista de "Redirect URLs" do projeto no
-  // Supabase (Authentication > URL Configuration), senão o link do
-  // email não funciona.
+  // Deriva a URL a partir da própria página atual (e não só de
+  // window.location.origin, que corta qualquer subpasta — ex: se o
+  // site estiver em https://gitsodre.github.io/locus/, origin sozinho
+  // vira https://gitsodre.github.io e o link do email cai numa página
+  // que não existe).
+  const baseUrl = window.location.href.replace(/recuperar-senha\.html.*$/, "");
+
+  // redirectTo também precisa estar na lista de "Redirect URLs" do
+  // projeto no Supabase (Authentication > URL Configuration), senão o
+  // link do email não funciona.
   await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/redefinir-senha.html"
+    redirectTo: baseUrl + "redefinir-senha.html"
   });
 
   btn.disabled = false;
