@@ -20,7 +20,7 @@ document.getElementById("btnEntrar").addEventListener("click", async () => {
     return;
   }
 
-  const { error } = await supabaseClient.auth.signInWithPassword({
+  const { data: loginData, error } = await supabaseClient.auth.signInWithPassword({
     email,
     password: senha
   });
@@ -33,10 +33,16 @@ document.getElementById("btnEntrar").addEventListener("click", async () => {
   // Verifica se este é o primeiro acesso do usuário: se for, ele ainda
   // está usando a senha temporária cadastrada pelo admin e precisa
   // definir sua própria senha (PIN de 6 dígitos) antes de entrar.
+  //
+  // A consulta usa o email devolvido pela sessão (já normalizado pelo
+  // Supabase), e não o que foi digitado — assim uma diferença de
+  // maiúsculas/minúsculas não faz a checagem passar batido.
+  const emailSessao = loginData.user?.email || email;
+
   const { data: userRow, error: errUsuario } = await supabaseClient
     .from("usuarios")
     .select("primeiro_acesso")
-    .eq("email", email)
+    .eq("email", emailSessao)
     .maybeSingle();
 
   if (errUsuario) {
