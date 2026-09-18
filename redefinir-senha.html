@@ -17,9 +17,12 @@
 
       <p class="instrucao">Crie sua nova senha numérica de 6 dígitos.</p>
 
-      <input type="password" id="pin1" class="campo-pin" placeholder="Nova senha (6 dígitos)"
+      <label class="campo-pin-label" for="pin1">Nova senha</label>
+      <input type="password" id="pin1" class="campo-pin" placeholder="••••••"
              inputmode="numeric" maxlength="6" autocomplete="new-password" />
-      <input type="password" id="pin2" class="campo-pin" placeholder="Confirme a senha"
+
+      <label class="campo-pin-label" for="pin2">Confirme a senha</label>
+      <input type="password" id="pin2" class="campo-pin" placeholder="••••••"
              inputmode="numeric" maxlength="6" autocomplete="new-password" />
 
       <button id="btnRedefinir" type="button">Redefinir senha</button>
