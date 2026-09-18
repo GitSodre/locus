@@ -62,7 +62,7 @@ document.getElementById("btnRedefinir").addEventListener("click", async () => {
   if (error) {
     btn.disabled = false;
     msg.classList.add("erro");
-    msg.textContent = "Não foi possível redefinir a senha: " + error.message;
+    msg.textContent = traduzirErroAuth(error.message);
     return;
   }
 
