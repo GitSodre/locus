@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Locus - Primeiro acesso</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&display=swap" rel="stylesheet">
+</head>
+
+<body class="login-page">
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1 class="logo">Locus.</h1>
+
+      <p class="instrucao">
+        Este é o seu primeiro acesso. Crie uma senha numérica de
+        6 dígitos para usar daqui em diante.
+      </p>
+
+      <input type="password" id="pin1" class="campo-pin" placeholder="Nova senha (6 dígitos)"
+             inputmode="numeric" maxlength="6" autocomplete="new-password" />
+      <input type="password" id="pin2" class="campo-pin" placeholder="Confirme a senha"
+             inputmode="numeric" maxlength="6" autocomplete="new-password" />
+
+      <button id="btnDefinir" type="button">Definir senha</button>
+
+      <p id="msg" class="msg-feedback"></p>
+    </div>
+  </div>
+
+  <script src="js/lib/supabase-2.116.0.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/primeiro-acesso.js"></script>
+</body>
+</html>
