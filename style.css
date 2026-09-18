@@ -861,3 +861,40 @@ details.painel-admin[open] summary h2::before {
   color: #fca5a5 !important;
   font-size: 13px !important;
 }
+
+/* =================================================
+   AUTENTICAÇÃO — link secundário e campos de PIN
+   (Esqueci minha senha / Primeiro acesso / Redefinir senha)
+================================================= */
+
+.link-secundario {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #93c5fd;
+  text-decoration: none;
+}
+.link-secundario:hover { text-decoration: underline; }
+
+.login-card p.instrucao {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 15px;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-card input.campo-pin {
+  letter-spacing: 6px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.login-card .msg-feedback {
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
