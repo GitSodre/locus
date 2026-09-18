@@ -47,7 +47,7 @@ document.getElementById("btnDefinir").addEventListener("click", async () => {
   if (errSenha) {
     btn.disabled = false;
     msg.classList.add("erro");
-    msg.textContent = "Não foi possível definir a senha: " + errSenha.message;
+    msg.textContent = traduzirErroAuth(errSenha.message);
     return;
   }
 
